@@ -24,8 +24,11 @@ export default function UploadPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ contentType: file.type }),
       });
-      if (!urlRes.ok) throw new Error("Could not get an upload URL.");
-      const { uploadUrl, publicUrl } = await urlRes.json();
+if (!urlRes.ok) {
+  const errData = await urlRes.json().catch(() => ({}));
+  throw new Error(errData.error || "Could not get an upload URL.");
+}
+const { uploadUrl, publicUrl } = await urlRes.json();
 
       const putRes = await fetch(uploadUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
       if (!putRes.ok) throw new Error("Video upload failed.");
