@@ -19,7 +19,7 @@ export default function UploadPage() {
     setError("");
     try {
       setStatus("uploading");
-      fetch("/api/upload", {
+      const urlRes = await fetch("/api/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ contentType: file.type }),
