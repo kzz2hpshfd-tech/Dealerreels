@@ -94,20 +94,6 @@ export default function FeedClient() {
     setActiveIdx(Math.round(el.scrollTop / el.clientHeight));
   };
 
-  if (!session) {
-    return (
-      <div className="h-screen flex flex-col items-center justify-center gap-4 bg-black text-white px-6 text-center">
-        <h1 className="font-display text-2xl">
-          DEALER<span className="text-red-500">REELS</span>
-        </h1>
-        <p className="text-white/60 text-sm">Sign in to see reels from your dealership network.</p>
-        <Link href="/login" className="bg-red-600 px-5 py-2 rounded-full text-sm font-semibold">
-          Sign in
-        </Link>
-      </div>
-    );
-  }
-
   return (
     <div className="w-full h-screen bg-black flex items-center justify-center">
       <div className="relative w-full max-w-[420px] h-full bg-neutral-950 overflow-hidden shadow-2xl">
