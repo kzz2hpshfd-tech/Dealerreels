@@ -1,0 +1,112 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SALESPERSON
+  DEALERSHIP_ADMIN
+  PLATFORM_ADMIN
+}
+
+model Dealership {
+  id             String   @id @default(cuid())
+  name           String
+  slug           String   @unique
+  city           String
+  state          String
+  logoUrl        String?
+  creditApplyUrl String?
+  createdAt      DateTime @default(now())
+
+  users  User[]
+  videos Video[]
+}
+
+model User {
+  id             String   @id @default(cuid())
+  name           String
+  email          String   @unique
+  passwordHash   String
+  role           Role     @default(SALESPERSON)
+  avatarInitials String?
+  bio            String?
+  createdAt      DateTime @default(now())
+
+  dealershipId String
+  dealership   Dealership @relation(fields: [dealershipId], references: [id])
+
+  videos    Video[]
+  likes     Like[]
+  comments  Comment[]
+  following Follow[] @relation("Following")
+  followers Follow[] @relation("Followers")
+}
+
+model Follow {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  followerId    String
+  follower      User   @relation("Following", fields: [followerId], references: [id])
+  followingId   String
+  followingUser User   @relation("Followers", fields: [followingId], references: [id])
+
+  @@unique([followerId, followingId])
+}
+
+enum VideoStatus {
+  PROCESSING
+  READY
+  FAILED
+}
+
+model Video {
+  id           String      @id @default(cuid())
+  caption      String
+  model        String
+  tags         String[]    @default([])
+  videoUrl     String
+  thumbnailUrl String?
+  status       VideoStatus @default(PROCESSING)
+  createdAt    DateTime    @default(now())
+
+  sellerId String
+  seller   User   @relation(fields: [sellerId], references: [id])
+
+  dealershipId String
+  dealership   Dealership @relation(fields: [dealershipId], references: [id])
+
+  likes    Like[]
+  comments Comment[]
+
+  @@index([dealershipId, model])
+  @@index([createdAt])
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  userId  String
+  user    User   @relation(fields: [userId], references: [id])
+  videoId String
+  video   Video  @relation(fields: [videoId], references: [id])
+
+  @@unique([userId, videoId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  body      String
+  createdAt DateTime @default(now())
+
+  userId  String
+  user    User  @relation(fields: [userId], references: [id])
+  videoId String
+  video   Video @relation(fields: [videoId], references: [id])
+}
