@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
     const { uploadUrl, publicUrl } = await createUploadUrl(contentType);
     return NextResponse.json({ uploadUrl, publicUrl });
   } catch (err: any) {
-    console.error("upload-url error:", err);
+    console.error("upload error:", err);
     return NextResponse.json({ error: err.message || "Unknown server error" }, { status: 500 });
   }
 }
