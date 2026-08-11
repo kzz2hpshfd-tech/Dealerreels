@@ -1,17 +1,23 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 
 const MODELS = ["Ram 1500", "Grand Cherokee", "Compass", "Durango", "Challenger", "Wrangler"];
 
 export default function UploadPage() {
   const router = useRouter();
+  const { status: sessionStatus } = useSession();
   const [file, setFile] = useState<File | null>(null);
   const [caption, setCaption] = useState("");
   const [model, setModel] = useState(MODELS[0]);
   const [tags, setTags] = useState("");
   const [status, setStatus] = useState<"idle" | "uploading" | "saving">("idle");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (sessionStatus === "unauthenticated") router.push("/login");
+  }, [sessionStatus, router]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -51,6 +57,10 @@ export default function UploadPage() {
       setError(err.message ?? "Something went wrong.");
       setStatus("idle");
     }
+  }
+
+  if (sessionStatus !== "authenticated") {
+    return <div className="min-h-screen bg-black text-white flex items-center justify-center text-sm text-white/50">Loading…</div>;
   }
 
   return (
