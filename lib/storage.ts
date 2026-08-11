@@ -9,6 +9,24 @@ export async function createUploadUrl(contentType: string) {
     throw new Error(`Missing environment variables: ${missing.join(", ")}`);
   }
 
+  const accessKeyId = process.env.S3_ACCESS_KEY_ID!.trim();
+  const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY!.trim();
+
+  // R2 access key IDs are always 32 characters; a mismatch here means
+  // the value stored in the deployment's env vars is truncated or
+  // otherwise wrong, and R2 will reject every request with a 400 that
+  // (being an error response) carries no CORS headers -- which then
+  // shows up in the browser as an opaque, misleading CORS failure.
+  // Surfacing the real cause here, before ever calling R2, saves a
+  // round trip through that misleading error.
+  if (accessKeyId.length !== 32) {
+    throw new Error(
+      `S3_ACCESS_KEY_ID is ${accessKeyId.length} characters long (R2 access key IDs are always 32). ` +
+        `Currently starts with "${accessKeyId.slice(0, 4)}" and ends with "${accessKeyId.slice(-4)}". ` +
+        `The value saved in Vercel's environment variables is wrong -- re-copy it from Cloudflare and update it there.`
+    );
+  }
+
   const s3 = new S3Client({
     region: process.env.S3_REGION || "auto",
     endpoint: process.env.S3_ENDPOINT,
@@ -20,8 +38,8 @@ export async function createUploadUrl(contentType: string) {
     // headers, so the browser hides it behind a generic network error.
     requestChecksumCalculation: "WHEN_REQUIRED",
     credentials: {
-      accessKeyId: process.env.S3_ACCESS_KEY_ID!,
-      secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
+      accessKeyId,
+      secretAccessKey,
     },
   });
 
