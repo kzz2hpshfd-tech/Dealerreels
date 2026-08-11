@@ -30,11 +30,6 @@ export async function createUploadUrl(contentType: string) {
 
   return { uploadUrl, publicUrl, key };
 }
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import { randomUUID } from "crypto";
-
-// ADD this function to your existing lib/storage.ts
-// (keep your existing createUploadUrl function too, doesn't need to be removed)
 
 export async function uploadFileDirect(fileBuffer: Buffer, contentType: string) {
   const required = ["S3_REGION", "S3_ENDPOINT", "S3_BUCKET", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY", "S3_PUBLIC_BASE_URL"];
