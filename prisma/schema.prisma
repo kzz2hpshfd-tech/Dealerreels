@@ -45,6 +45,9 @@ model User {
   comments  Comment[]
   following Follow[] @relation("Following")
   followers Follow[] @relation("Followers")
+
+  sentMessages     Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
 }
 
 model Follow {
@@ -109,4 +112,19 @@ model Comment {
   user    User  @relation(fields: [userId], references: [id])
   videoId String
   video   Video @relation(fields: [videoId], references: [id])
+}
+
+model Message {
+  id        String    @id @default(cuid())
+  body      String
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
+
+  senderId    String
+  sender      User   @relation("SentMessages", fields: [senderId], references: [id])
+  recipientId String
+  recipient   User   @relation("ReceivedMessages", fields: [recipientId], references: [id])
+
+  @@index([senderId, recipientId, createdAt])
+  @@index([recipientId, senderId, createdAt])
 }
