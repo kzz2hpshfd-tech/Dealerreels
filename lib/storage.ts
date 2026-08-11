@@ -51,7 +51,12 @@ export async function createUploadUrl(contentType: string) {
   });
 
   const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 60 * 5 });
-  const publicUrl = `${process.env.S3_PUBLIC_BASE_URL}/${key}`;
+  // Strip any trailing slash on the base URL so this never produces a
+  // double slash regardless of whether S3_PUBLIC_BASE_URL was set with
+  // one -- a double slash here 404s against R2's public dev URL since
+  // the resulting path doesn't match the stored object key.
+  const publicBase = process.env.S3_PUBLIC_BASE_URL!.replace(/\/+$/, "");
+  const publicUrl = `${publicBase}/${key}`;
 
   return { uploadUrl, publicUrl, key };
 }
