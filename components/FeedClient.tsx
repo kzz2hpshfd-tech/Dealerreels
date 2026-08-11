@@ -227,7 +227,7 @@ export default function FeedClient() {
           <Link href="/upload" className="w-9 h-8 rounded-lg bg-red-600 flex items-center justify-center -mt-1">
             <PlusSquare size={18} className="text-white" />
           </Link>
-          <NavIcon icon={<Mail size={20} />} label="Inbox" />
+          <NavIcon icon={<Mail size={20} />} label="Inbox" href="/messages" />
           <NavIcon icon={<User size={20} />} label="Profile" />
         </div>
       </div>
@@ -266,9 +266,28 @@ function FilterRow({
   );
 }
 
-function NavIcon({ icon, label, active }: { icon: React.ReactNode; label: string; active?: boolean }) {
+function NavIcon({
+  icon,
+  label,
+  active,
+  href,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  active?: boolean;
+  href?: string;
+}) {
+  const className = `flex flex-col items-center gap-0.5 ${active ? "text-white" : "text-white/40"}`;
+  if (href) {
+    return (
+      <Link href={href} className={className}>
+        {icon}
+        <span className="text-[9px]">{label}</span>
+      </Link>
+    );
+  }
   return (
-    <button className={`flex flex-col items-center gap-0.5 ${active ? "text-white" : "text-white/40"}`}>
+    <button className={className}>
       {icon}
       <span className="text-[9px]">{label}</span>
     </button>
@@ -331,9 +350,12 @@ function ReelCard({
       {/* Right action rail */}
       <div className="absolute right-3 bottom-20 z-20 flex flex-col items-center gap-4">
         <div className="flex flex-col items-center gap-1">
-          <div className="w-11 h-11 rounded-full bg-white/15 border-2 border-white flex items-center justify-center text-white text-[11px] font-bold">
+          <Link
+            href={`/messages/${video.seller.id}`}
+            className="w-11 h-11 rounded-full bg-white/15 border-2 border-white flex items-center justify-center text-white text-[11px] font-bold"
+          >
             {video.seller.avatarInitials ?? video.seller.name.slice(0, 2).toUpperCase()}
-          </div>
+          </Link>
           <button
             onClick={onFollow}
             className={`w-5 h-5 rounded-full flex items-center justify-center -mt-2 border-2 border-black ${
