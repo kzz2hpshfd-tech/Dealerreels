@@ -5,8 +5,15 @@ import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import {
   Heart, MessageCircle, Share2, Play, Home, Compass,
-  PlusSquare, Mail, User, Sparkles, MapPin, X, Check, CreditCard,
+  PlusSquare, Mail, User, Sparkles, MapPin, X, Check, CreditCard, Send,
 } from "lucide-react";
+
+type Comment = {
+  id: string;
+  body: string;
+  createdAt: string;
+  user: { id: string; name: string; avatarInitials: string | null };
+};
 
 const MODELS = ["All models", "Ram 1500", "Grand Cherokee", "Compass", "Durango", "Challenger", "Wrangler"];
 
@@ -35,6 +42,8 @@ export default function FeedClient() {
   const [following, setFollowing] = useState<Record<string, boolean>>({});
   const [liked, setLiked] = useState<Record<string, boolean>>({});
   const [activeIdx, setActiveIdx] = useState(0);
+  const [commentsOpenFor, setCommentsOpenFor] = useState<string | null>(null);
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const containerRef = useRef<HTMLDivElement>(null);
 
   // load dealerships for the filter list
@@ -193,10 +202,23 @@ export default function FeedClient() {
               onFollow={() => toggleFollow(v.seller.id)}
               isLiked={!!liked[v.id]}
               onLike={() => toggleLike(v.id)}
+              commentCount={commentCounts[v.id] ?? v._count.comments}
+              onOpenComments={() => setCommentsOpenFor(v.id)}
               matchScore={vibe.trim() ? v.matchScore ?? null : null}
             />
           ))}
         </div>
+
+        {commentsOpenFor && (
+          <CommentsSheet
+            videoId={commentsOpenFor}
+            isSignedIn={!!session}
+            onClose={() => setCommentsOpenFor(null)}
+            onCommentPosted={() =>
+              setCommentCounts((c) => ({ ...c, [commentsOpenFor]: (c[commentsOpenFor] ?? 0) + 1 }))
+            }
+          />
+        )}
 
         {/* Bottom nav */}
         <div className="absolute bottom-0 left-0 right-0 z-30 bg-black/90 backdrop-blur border-t border-white/10 px-2 pt-2 pb-3 flex items-center justify-between">
@@ -260,6 +282,8 @@ function ReelCard({
   onFollow,
   isLiked,
   onLike,
+  commentCount,
+  onOpenComments,
   matchScore,
 }: {
   video: Video;
@@ -268,6 +292,8 @@ function ReelCard({
   onFollow: () => void;
   isLiked: boolean;
   onLike: () => void;
+  commentCount: number;
+  onOpenComments: () => void;
   matchScore: number | null;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -322,9 +348,9 @@ function ReelCard({
           <Heart size={26} className={isLiked ? "fill-red-500 text-red-500" : "text-white"} />
           <span className="text-[11px]">{likeCount.toLocaleString()}</span>
         </button>
-        <button className="flex flex-col items-center gap-1 text-white">
+        <button onClick={onOpenComments} className="flex flex-col items-center gap-1 text-white">
           <MessageCircle size={25} />
-          <span className="text-[11px]">{video._count.comments}</span>
+          <span className="text-[11px]">{commentCount}</span>
         </button>
         <a
           href={applyUrl}
@@ -355,6 +381,131 @@ function ReelCard({
         </div>
         <p className="text-white/90 text-[13px] leading-snug">{video.caption}</p>
         <p className="text-red-300/80 text-[12px] mt-1">{video.tags.map((t) => `#${t}`).join(" ")}</p>
+      </div>
+    </div>
+  );
+}
+
+function CommentsSheet({
+  videoId,
+  isSignedIn,
+  onClose,
+  onCommentPosted,
+}: {
+  videoId: string;
+  isSignedIn: boolean;
+  onClose: () => void;
+  onCommentPosted: () => void;
+}) {
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [text, setText] = useState("");
+  const [posting, setPosting] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetch(`/api/videos/${videoId}/comments`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled) setComments(d.comments ?? []);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [videoId]);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!text.trim()) return;
+    setPosting(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/videos/${videoId}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body: text.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Could not post comment.");
+        return;
+      }
+      setComments((c) => [...c, data.comment]);
+      onCommentPosted();
+      setText("");
+    } catch {
+      setError("Could not post comment.");
+    } finally {
+      setPosting(false);
+    }
+  }
+
+  return (
+    <div className="absolute inset-0 z-40 flex items-end" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/60" />
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-h-[70%] bg-neutral-950 border-t border-white/10 rounded-t-2xl flex flex-col"
+      >
+        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+          <p className="text-white text-sm font-semibold">Comments</p>
+          <button onClick={onClose} className="text-white/60 hover:text-white">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+          {loading && <p className="text-white/40 text-xs text-center py-4">Loading…</p>}
+          {!loading && comments.length === 0 && (
+            <p className="text-white/40 text-xs text-center py-4">No comments yet. Be the first to say something.</p>
+          )}
+          {comments.map((c) => (
+            <div key={c.id} className="flex items-start gap-2">
+              <div className="w-7 h-7 shrink-0 rounded-full bg-white/15 flex items-center justify-center text-white text-[10px] font-bold">
+                {c.user.avatarInitials ?? c.user.name.slice(0, 2).toUpperCase()}
+              </div>
+              <div>
+                <p className="text-white text-[12px]">
+                  <span className="font-semibold">{c.user.name}</span>{" "}
+                  <span className="text-white/80">{c.body}</span>
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="px-4 py-3 border-t border-white/10">
+          {isSignedIn ? (
+            <form onSubmit={submit} className="flex items-center gap-2">
+              <input
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Add a comment…"
+                className="flex-1 bg-white/10 border border-white/10 rounded-full px-3 py-2 text-sm text-white placeholder-white/40 outline-none"
+              />
+              <button
+                type="submit"
+                disabled={posting || !text.trim()}
+                className="w-9 h-9 shrink-0 rounded-full bg-red-600 disabled:opacity-40 flex items-center justify-center text-white"
+              >
+                <Send size={15} />
+              </button>
+            </form>
+          ) : (
+            <p className="text-white/40 text-xs text-center">
+              <Link href="/login" className="underline text-white/70">
+                Sign in
+              </Link>{" "}
+              to leave a comment.
+            </p>
+          )}
+          {error && <p className="text-red-400 text-[11px] mt-1">{error}</p>}
+        </div>
       </div>
     </div>
   );
