@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { extractR2Key, getPlaybackUrl } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,22 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  return NextResponse.json({ videos });
+  // Serve playback via a freshly-signed R2 URL rather than the stored
+  // public URL -- sidesteps needing the bucket's public "Development
+  // URL" to be enabled and S3_PUBLIC_BASE_URL to correctly match it.
+  const withPlaybackUrls = await Promise.all(
+    videos.map(async (v) => {
+      const key = extractR2Key(v.videoUrl);
+      if (!key) return v;
+      try {
+        return { ...v, videoUrl: await getPlaybackUrl(key) };
+      } catch {
+        return v;
+      }
+    })
+  );
+
+  return NextResponse.json({ videos: withPlaybackUrls });
 }
 
 export async function POST(req: NextRequest) {

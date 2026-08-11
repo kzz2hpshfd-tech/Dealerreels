@@ -1,9 +1,9 @@
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { randomUUID } from "crypto";
 
-export async function createUploadUrl(contentType: string) {
-  const required = ["S3_REGION", "S3_ENDPOINT", "S3_BUCKET", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY", "S3_PUBLIC_BASE_URL"];
+function getS3Client() {
+  const required = ["S3_REGION", "S3_ENDPOINT", "S3_BUCKET", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"];
   const missing = required.filter((key) => !process.env[key]);
   if (missing.length > 0) {
     throw new Error(`Missing environment variables: ${missing.join(", ")}`);
@@ -27,7 +27,7 @@ export async function createUploadUrl(contentType: string) {
     );
   }
 
-  const s3 = new S3Client({
+  return new S3Client({
     region: process.env.S3_REGION || "auto",
     endpoint: process.env.S3_ENDPOINT,
     forcePathStyle: true,
@@ -42,6 +42,14 @@ export async function createUploadUrl(contentType: string) {
       secretAccessKey,
     },
   });
+}
+
+export async function createUploadUrl(contentType: string) {
+  if (!process.env.S3_PUBLIC_BASE_URL) {
+    throw new Error("Missing environment variable: S3_PUBLIC_BASE_URL");
+  }
+
+  const s3 = getS3Client();
 
   const key = `videos/${randomUUID()}.mp4`;
   const command = new PutObjectCommand({
@@ -59,4 +67,26 @@ export async function createUploadUrl(contentType: string) {
   const publicUrl = `${publicBase}/${key}`;
 
   return { uploadUrl, publicUrl, key };
+}
+
+// The R2 object key is always "videos/<uuid>.mp4" -- pull that back out
+// of a previously-stored public URL regardless of what base URL it was
+// built with (including a wrong/misconfigured one).
+export function extractR2Key(url: string): string | null {
+  const match = url.match(/videos\/[^/?]+\.mp4/);
+  return match ? match[0] : null;
+}
+
+// Generates a time-limited signed GET URL straight from R2's S3 API
+// using the same credentials the upload flow already uses. This avoids
+// depending on the bucket's public "Development URL" being enabled and
+// correctly configured in S3_PUBLIC_BASE_URL -- which has proven to be
+// an easy thing to get wrong (e.g. pointing at a different bucket).
+export async function getPlaybackUrl(key: string) {
+  const s3 = getS3Client();
+  const command = new GetObjectCommand({
+    Bucket: process.env.S3_BUCKET!,
+    Key: key,
+  });
+  return getSignedUrl(s3, command, { expiresIn: 60 * 60 * 6 });
 }
