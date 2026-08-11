@@ -23,35 +23,64 @@ export default function UploadPage() {
     e.preventDefault();
     if (!file) return setError("Choose a video file first.");
     setError("");
+    let uploadUrl = "";
     try {
       setStatus("uploading");
-      const urlRes = await fetch("/api/upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contentType: file.type }),
-      });
-      if (!urlRes.ok) throw new Error("Could not get an upload URL.");
-      const { uploadUrl, publicUrl } = await urlRes.json();
 
-      const putRes = await fetch(uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": file.type },
-        body: file,
-      });
-      if (!putRes.ok) throw new Error("Video upload failed.");
+      let urlRes: Response;
+      try {
+        urlRes = await fetch("/api/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contentType: file.type }),
+        });
+      } catch (err: any) {
+        throw new Error(`Could not reach /api/upload (${err.message}).`);
+      }
+      if (!urlRes.ok) {
+        const body = await urlRes.text().catch(() => "");
+        throw new Error(`/api/upload returned ${urlRes.status}: ${body.slice(0, 200)}`);
+      }
+      const presign = await urlRes.json();
+      uploadUrl = presign.uploadUrl;
+      const publicUrl = presign.publicUrl;
+
+      let putRes: Response;
+      try {
+        putRes = await fetch(uploadUrl, {
+          method: "PUT",
+          headers: { "Content-Type": file.type },
+          body: file,
+        });
+      } catch (err: any) {
+        const host = (() => { try { return new URL(uploadUrl).host; } catch { return "unknown host"; } })();
+        throw new Error(`PUT to ${host} failed before a response came back (${err.message}). This usually means the storage bucket's CORS policy doesn't allow this origin.`);
+      }
+      if (!putRes.ok) {
+        const body = await putRes.text().catch(() => "");
+        throw new Error(`Storage rejected the upload (HTTP ${putRes.status}): ${body.slice(0, 300)}`);
+      }
 
       setStatus("saving");
-      const saveRes = await fetch("/api/videos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          caption,
-          model,
-          tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
-          videoUrl: publicUrl,
-        }),
-      });
-      if (!saveRes.ok) throw new Error("Could not save the video.");
+      let saveRes: Response;
+      try {
+        saveRes = await fetch("/api/videos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            caption,
+            model,
+            tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
+            videoUrl: publicUrl,
+          }),
+        });
+      } catch (err: any) {
+        throw new Error(`Could not reach /api/videos (${err.message}).`);
+      }
+      if (!saveRes.ok) {
+        const body = await saveRes.json().catch(() => ({}));
+        throw new Error(`Could not save the video (HTTP ${saveRes.status}): ${body.error ?? "unknown error"}`);
+      }
       router.push("/feed");
     } catch (err: any) {
       setError(err.message ?? "Something went wrong.");
