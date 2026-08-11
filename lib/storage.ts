@@ -13,6 +13,12 @@ export async function createUploadUrl(contentType: string) {
     region: process.env.S3_REGION || "auto",
     endpoint: process.env.S3_ENDPOINT,
     forcePathStyle: true,
+    // R2 doesn't support the flexible-checksum params the SDK adds by
+    // default, and it signs them against an empty body (no file exists
+    // yet when the URL is presigned) -- the real upload's bytes then
+    // never match what was signed, and R2's rejection carries no CORS
+    // headers, so the browser hides it behind a generic network error.
+    requestChecksumCalculation: "WHEN_REQUIRED",
     credentials: {
       accessKeyId: process.env.S3_ACCESS_KEY_ID!,
       secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
