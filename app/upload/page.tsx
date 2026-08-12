@@ -12,6 +12,7 @@ export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
   const [caption, setCaption] = useState("");
   const [model, setModel] = useState(MODELS[0]);
+  const [customModel, setCustomModel] = useState(false);
   const [tags, setTags] = useState("");
   const [status, setStatus] = useState<"idle" | "uploading" | "saving">("idle");
   const [error, setError] = useState("");
@@ -121,10 +122,41 @@ export default function UploadPage() {
           <input type="file" accept="video/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="w-full mt-1 text-sm" required />
         </div>
         <div>
-          <label className="text-xs text-white/50 uppercase tracking-wide">Model</label>
-          <select value={model} onChange={(e) => setModel(e.target.value)} className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm">
-            {MODELS.map((m) => (<option key={m} value={m}>{m}</option>))}
-          </select>
+          <div className="flex items-center justify-between">
+            <label className="text-xs text-white/50 uppercase tracking-wide">Model</label>
+            <div className="flex bg-white/5 border border-white/10 rounded-full p-0.5 text-[11px]">
+              <button
+                type="button"
+                onClick={() => setCustomModel(false)}
+                className={`px-2.5 py-0.5 rounded-full transition-colors ${!customModel ? "bg-red-600 text-white" : "text-white/50"}`}
+              >
+                Choose
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomModel(true);
+                  setModel("");
+                }}
+                className={`px-2.5 py-0.5 rounded-full transition-colors ${customModel ? "bg-red-600 text-white" : "text-white/50"}`}
+              >
+                Type it in
+              </button>
+            </div>
+          </div>
+          {customModel ? (
+            <input
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              placeholder="e.g. 2024 F-150 Lariat"
+              className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm"
+              required
+            />
+          ) : (
+            <select value={model} onChange={(e) => setModel(e.target.value)} className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm">
+              {MODELS.map((m) => (<option key={m} value={m}>{m}</option>))}
+            </select>
+          )}
         </div>
         <div>
           <label className="text-xs text-white/50 uppercase tracking-wide">Caption</label>
