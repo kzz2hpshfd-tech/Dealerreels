@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   Heart, MessageCircle, Share2, Play, Home, Compass,
   PlusSquare, Mail, User, Sparkles, MapPin, X, Check, CreditCard, Send,
-  Volume2, VolumeX, Trash2, Bookmark, CheckCircle2,
+  Volume2, VolumeX, Trash2, Bookmark, CheckCircle2, Bell,
 } from "lucide-react";
 
 type Comment = {
@@ -47,6 +47,7 @@ export default function FeedClient() {
   const [commentsOpenFor, setCommentsOpenFor] = useState<string | null>(null);
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
   const [leadFormOpenFor, setLeadFormOpenFor] = useState<string | null>(null);
+  const [newLeadCount, setNewLeadCount] = useState(0);
   // Browsers require video to start muted for autoplay to work without a
   // click. Once the user explicitly unmutes, that's a real user gesture,
   // so it's allowed to stay unmuted across cards.
@@ -60,6 +61,32 @@ export default function FeedClient() {
       .then((d) => setDealerships(d.dealerships ?? []))
       .catch(() => {});
   }, []);
+
+  // Poll for new leads while a dealer account has the app open -- the
+  // closest thing to a live notification without a texting/email
+  // provider integration.
+  const sessionUser = session?.user as any;
+  const isDealerAccount = !!sessionUser?.dealershipId && sessionUser?.role !== "SHOPPER";
+  useEffect(() => {
+    if (!isDealerAccount) return;
+    let cancelled = false;
+    const checkLeads = () => {
+      fetch("/api/leads")
+        .then((r) => r.json())
+        .then((d) => {
+          if (cancelled) return;
+          const count = (d.leads ?? []).filter((l: any) => l.status === "NEW").length;
+          setNewLeadCount(count);
+        })
+        .catch(() => {});
+    };
+    checkLeads();
+    const interval = setInterval(checkLeads, 45000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [isDealerAccount]);
 
   // load feed whenever filters change (and vibe search is empty)
   const loadFeed = useCallback(async () => {
@@ -136,9 +163,21 @@ export default function FeedClient() {
                 DEALER<span className="text-red-500">REELS</span>
               </span>
             </div>
-            <button onClick={() => signOut()} className="text-white/40 text-[11px] underline">
-              Sign out
-            </button>
+            <div className="flex items-center gap-3">
+              {isDealerAccount && (
+                <Link href="/leads" className="relative text-white/70">
+                  <Bell size={16} />
+                  {newLeadCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 min-w-[15px] h-[15px] px-0.5 rounded-full bg-red-600 text-white text-[9px] leading-[15px] text-center">
+                      {newLeadCount}
+                    </span>
+                  )}
+                </Link>
+              )}
+              <button onClick={() => signOut()} className="text-white/40 text-[11px] underline">
+                Sign out
+              </button>
+            </div>
           </div>
 
           <div className="mt-3 flex items-center gap-2">
