@@ -46,8 +46,11 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   const user = session?.user as any;
-  if (!user?.id || !user?.dealershipId) {
+  if (!user?.id) {
     return NextResponse.json({ error: "You must be signed in to post a reel." }, { status: 401 });
+  }
+  if (user.role === "SHOPPER" || !user.dealershipId) {
+    return NextResponse.json({ error: "Only dealership accounts can post reels." }, { status: 403 });
   }
 
   try {

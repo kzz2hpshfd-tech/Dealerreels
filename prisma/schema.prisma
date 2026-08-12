@@ -11,6 +11,7 @@ enum Role {
   SALESPERSON
   DEALERSHIP_ADMIN
   PLATFORM_ADMIN
+  SHOPPER
 }
 
 model Dealership {
@@ -37,14 +38,24 @@ model User {
   bio            String?
   createdAt      DateTime @default(now())
 
-  dealershipId String
-  dealership   Dealership @relation(fields: [dealershipId], references: [id])
+  // Shoppers aren't tied to a dealership -- only dealer-side accounts are.
+  firstName String?
+  lastName  String?
+  phone     String?
+  // When the user agreed to the calling/texting consent language at
+  // signup -- kept as an audit trail, not just a boolean, since TCPA
+  // consent records matter if it's ever disputed.
+  smsConsentAt DateTime?
+
+  dealershipId String?
+  dealership   Dealership? @relation(fields: [dealershipId], references: [id])
 
   videos    Video[]
   likes     Like[]
   comments  Comment[]
   following Follow[] @relation("Following")
   followers Follow[] @relation("Followers")
+  saved     SavedVideo[]
 
   sentMessages     Message[] @relation("SentMessages")
   receivedMessages Message[] @relation("ReceivedMessages")
@@ -86,6 +97,7 @@ model Video {
 
   likes    Like[]
   comments Comment[]
+  saves    SavedVideo[]
 
   @@index([dealershipId, model])
   @@index([createdAt])
@@ -112,6 +124,18 @@ model Comment {
   user    User  @relation(fields: [userId], references: [id])
   videoId String
   video   Video @relation(fields: [videoId], references: [id])
+}
+
+model SavedVideo {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  userId  String
+  user    User   @relation(fields: [userId], references: [id])
+  videoId String
+  video   Video  @relation(fields: [videoId], references: [id])
+
+  @@unique([userId, videoId])
 }
 
 model Message {

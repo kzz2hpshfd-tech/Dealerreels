@@ -10,14 +10,23 @@ function slugify(name: string) {
     .replace(/(^-|-$)/g, "");
 }
 
+function initialsOf(name: string) {
+  return (
+    name
+      .trim()
+      .split(/\s+/)
+      .map((p: string) => p[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || null
+  );
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, email, password, dealershipId, newDealership } = body;
+    const { accountType, email, password } = body;
 
-    if (!name || typeof name !== "string") {
-      return NextResponse.json({ error: "Name is required." }, { status: 400 });
-    }
     if (!email || typeof email !== "string") {
       return NextResponse.json({ error: "Email is required." }, { status: 400 });
     }
@@ -28,6 +37,54 @@ export async function POST(req: NextRequest) {
     const existing = await db.user.findUnique({ where: { email } });
     if (existing) {
       return NextResponse.json({ error: "An account with that email already exists." }, { status: 409 });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    if (accountType === "shopper") {
+      const { firstName, lastName, phone, smsConsent } = body;
+
+      if (!firstName || typeof firstName !== "string") {
+        return NextResponse.json({ error: "First name is required." }, { status: 400 });
+      }
+      if (!lastName || typeof lastName !== "string") {
+        return NextResponse.json({ error: "Last name is required." }, { status: 400 });
+      }
+      const digitCount = typeof phone === "string" ? phone.replace(/\D/g, "").length : 0;
+      if (digitCount < 10) {
+        return NextResponse.json({ error: "A valid phone number is required." }, { status: 400 });
+      }
+      if (!smsConsent) {
+        return NextResponse.json(
+          { error: "You must agree to the terms to be contacted at the phone number provided." },
+          { status: 400 }
+        );
+      }
+
+      const name = `${firstName} ${lastName}`.trim();
+      await db.user.create({
+        data: {
+          name,
+          firstName,
+          lastName,
+          phone,
+          email,
+          passwordHash,
+          role: "SHOPPER",
+          avatarInitials: initialsOf(name),
+          smsConsentAt: new Date(),
+          dealershipId: null,
+        },
+      });
+
+      return NextResponse.json({ ok: true });
+    }
+
+    // Dealer / salesperson signup (default).
+    const { name, dealershipId, newDealership } = body;
+
+    if (!name || typeof name !== "string") {
+      return NextResponse.json({ error: "Name is required." }, { status: 400 });
     }
 
     let resolvedDealershipId: string | undefined = dealershipId || undefined;
@@ -59,22 +116,13 @@ export async function POST(req: NextRequest) {
       resolvedDealershipId = dealership.id;
     }
 
-    const passwordHash = await bcrypt.hash(password, 10);
-    const initials = name
-      .trim()
-      .split(/\s+/)
-      .map((p: string) => p[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase();
-
     await db.user.create({
       data: {
         name,
         email,
         passwordHash,
         role: "SALESPERSON",
-        avatarInitials: initials || null,
+        avatarInitials: initialsOf(name),
         dealershipId: resolvedDealershipId,
       },
     });
