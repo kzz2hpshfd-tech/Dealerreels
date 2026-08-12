@@ -13,7 +13,7 @@ type Dealer = {
   role: string;
   verificationStatus: "PENDING" | "APPROVED" | "REJECTED";
   createdAt: string;
-  dealership: { id: string; name: string; city: string; state: string } | null;
+  dealership: { id: string; name: string; city: string; state: string; seatLimit: number | null; approvedSeats: number } | null;
   _count: { videos: number };
 };
 
@@ -42,7 +42,10 @@ export default function AdminDealersPage() {
       .finally(() => setLoading(false));
   }, [sessionStatus]);
 
+  const [actionError, setActionError] = useState("");
+
   async function setStatus(id: string, verificationStatus: Dealer["verificationStatus"]) {
+    setActionError("");
     const prev = dealers;
     setDealers((ds) => ds.map((d) => (d.id === id ? { ...d, verificationStatus } : d)));
     const res = await fetch(`/api/admin/dealers/${id}`, {
@@ -50,7 +53,11 @@ export default function AdminDealersPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ verificationStatus }),
     });
-    if (!res.ok) setDealers(prev);
+    if (!res.ok) {
+      setDealers(prev);
+      const data = await res.json().catch(() => ({}));
+      setActionError(data.error ?? "Could not update this account.");
+    }
   }
 
   if (sessionStatus !== "authenticated") {
@@ -78,6 +85,10 @@ export default function AdminDealersPage() {
 
         {isAdmin && (
           <>
+            {actionError && (
+              <p className="text-red-400 text-[11px] px-4 pt-3">{actionError}</p>
+            )}
+
             <div className="flex gap-1.5 px-4 pt-3 pb-2 overflow-x-auto">
               {FILTERS.map((f) => (
                 <button
@@ -122,6 +133,14 @@ export default function AdminDealersPage() {
                   {d.dealership && (
                     <p className="text-[11px] text-white/50">
                       {d.dealership.name} &middot; {d.dealership.city}, {d.dealership.state}
+                      {" "}&middot;{" "}
+                      {d.dealership.seatLimit === null ? (
+                        <span className="text-white/40">unlimited seats</span>
+                      ) : (
+                        <span className={d.dealership.approvedSeats >= d.dealership.seatLimit ? "text-red-400" : "text-white/40"}>
+                          {d.dealership.approvedSeats}/{d.dealership.seatLimit} seats
+                        </span>
+                      )}
                     </p>
                   )}
                   <p className="text-[10px] text-white/30">

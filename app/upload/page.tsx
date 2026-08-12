@@ -108,14 +108,19 @@ export default function UploadPage() {
       <form onSubmit={onSubmit} className="w-full max-w-sm space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="font-display text-xl">Post a <span className="text-red-500">reel</span></h1>
-          <Link href="/leads" className="text-xs text-white/50 underline flex items-center gap-1">
-            My Leads
-            {newLeadCount > 0 && (
-              <span className="min-w-[15px] h-[15px] px-0.5 rounded-full bg-red-600 text-white text-[9px] leading-[15px] text-center no-underline">
-                {newLeadCount}
-              </span>
-            )}
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link href="/billing" className="text-xs text-white/50 underline">
+              Billing
+            </Link>
+            <Link href="/leads" className="text-xs text-white/50 underline flex items-center gap-1">
+              My Leads
+              {newLeadCount > 0 && (
+                <span className="min-w-[15px] h-[15px] px-0.5 rounded-full bg-red-600 text-white text-[9px] leading-[15px] text-center no-underline">
+                  {newLeadCount}
+                </span>
+              )}
+            </Link>
+          </div>
         </div>
         <div>
           <label className="text-xs text-white/50 uppercase tracking-wide">Video file</label>
