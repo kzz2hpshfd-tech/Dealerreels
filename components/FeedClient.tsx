@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   Heart, MessageCircle, Share2, Play, Home, Compass,
   PlusSquare, Mail, User, Sparkles, MapPin, X, Check, CreditCard, Send,
-  Volume2, VolumeX,
+  Volume2, VolumeX, Trash2,
 } from "lucide-react";
 
 type Comment = {
@@ -100,6 +100,12 @@ export default function FeedClient() {
     setLiked((l) => ({ ...l, [videoId]: !l[videoId] }));
     const res = await fetch(`/api/videos/${videoId}/like`, { method: "POST" });
     if (!res.ok) setLiked((l) => ({ ...l, [videoId]: !l[videoId] }));
+  };
+
+  const deleteVideo = async (videoId: string) => {
+    if (!window.confirm("Delete this reel? This can't be undone.")) return;
+    const res = await fetch(`/api/videos/${videoId}`, { method: "DELETE" });
+    if (res.ok) setVideos((vs) => vs.filter((v) => v.id !== videoId));
   };
 
   const onScroll = () => {
@@ -212,6 +218,8 @@ export default function FeedClient() {
               matchScore={vibe.trim() ? v.matchScore ?? null : null}
               muted={muted}
               onToggleMute={() => setMuted((m) => !m)}
+              currentUserId={(session?.user as any)?.id}
+              onDelete={() => deleteVideo(v.id)}
             />
           ))}
         </div>
@@ -220,9 +228,13 @@ export default function FeedClient() {
           <CommentsSheet
             videoId={commentsOpenFor}
             isSignedIn={!!session}
+            currentUserId={(session?.user as any)?.id}
             onClose={() => setCommentsOpenFor(null)}
             onCommentPosted={() =>
               setCommentCounts((c) => ({ ...c, [commentsOpenFor]: (c[commentsOpenFor] ?? 0) + 1 }))
+            }
+            onCommentDeleted={() =>
+              setCommentCounts((c) => ({ ...c, [commentsOpenFor]: Math.max(0, (c[commentsOpenFor] ?? 1) - 1) }))
             }
           />
         )}
@@ -313,6 +325,8 @@ function ReelCard({
   matchScore,
   muted,
   onToggleMute,
+  currentUserId,
+  onDelete,
 }: {
   video: Video;
   active: boolean;
@@ -325,6 +339,8 @@ function ReelCard({
   matchScore: number | null;
   muted: boolean;
   onToggleMute: () => void;
+  currentUserId?: string;
+  onDelete: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -409,6 +425,11 @@ function ReelCard({
         <button className="flex flex-col items-center gap-1 text-white">
           <Share2 size={24} />
         </button>
+        {currentUserId && video.seller.id === currentUserId && (
+          <button onClick={onDelete} className="flex flex-col items-center gap-1 text-white/70" aria-label="Delete reel">
+            <Trash2 size={22} />
+          </button>
+        )}
       </div>
 
       {/* Bottom info */}
@@ -430,19 +451,32 @@ function ReelCard({
 function CommentsSheet({
   videoId,
   isSignedIn,
+  currentUserId,
   onClose,
   onCommentPosted,
+  onCommentDeleted,
 }: {
   videoId: string;
   isSignedIn: boolean;
+  currentUserId?: string;
   onClose: () => void;
   onCommentPosted: () => void;
+  onCommentDeleted: () => void;
 }) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState("");
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState("");
+
+  async function deleteComment(commentId: string) {
+    if (!window.confirm("Delete this comment?")) return;
+    const res = await fetch(`/api/comments/${commentId}`, { method: "DELETE" });
+    if (res.ok) {
+      setComments((c) => c.filter((x) => x.id !== commentId));
+      onCommentDeleted();
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -510,12 +544,21 @@ function CommentsSheet({
               <div className="w-7 h-7 shrink-0 rounded-full bg-white/15 flex items-center justify-center text-white text-[10px] font-bold">
                 {c.user.avatarInitials ?? c.user.name.slice(0, 2).toUpperCase()}
               </div>
-              <div>
+              <div className="flex-1 min-w-0">
                 <p className="text-white text-[12px]">
                   <span className="font-semibold">{c.user.name}</span>{" "}
                   <span className="text-white/80">{c.body}</span>
                 </p>
               </div>
+              {currentUserId && c.user.id === currentUserId && (
+                <button
+                  onClick={() => deleteComment(c.id)}
+                  className="shrink-0 text-white/30 hover:text-white/70"
+                  aria-label="Delete comment"
+                >
+                  <Trash2 size={13} />
+                </button>
+              )}
             </div>
           ))}
         </div>
