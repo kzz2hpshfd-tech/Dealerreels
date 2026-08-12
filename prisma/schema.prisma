@@ -24,8 +24,9 @@ model Dealership {
   creditApplyUrl String?
   createdAt      DateTime @default(now())
 
-  users  User[]
-  videos Video[]
+  users       User[]
+  videos      Video[]
+  creditLeads CreditLead[]
 }
 
 model User {
@@ -59,6 +60,9 @@ model User {
 
   sentMessages     Message[] @relation("SentMessages")
   receivedMessages Message[] @relation("ReceivedMessages")
+
+  creditLeads          CreditLead[] @relation("CreditLeadsForSeller")
+  submittedCreditLeads CreditLead[] @relation("CreditLeadsSubmittedBy")
 }
 
 model Follow {
@@ -95,9 +99,10 @@ model Video {
   dealershipId String
   dealership   Dealership @relation(fields: [dealershipId], references: [id])
 
-  likes    Like[]
-  comments Comment[]
-  saves    SavedVideo[]
+  likes       Like[]
+  comments    Comment[]
+  saves       SavedVideo[]
+  creditLeads CreditLead[]
 
   @@index([dealershipId, model])
   @@index([createdAt])
@@ -136,6 +141,33 @@ model SavedVideo {
   video   Video  @relation(fields: [videoId], references: [id])
 
   @@unique([userId, videoId])
+}
+
+// A credit-application interest lead captured in-app instead of sending
+// shoppers straight to the dealership's own site -- keeps attribution
+// to the specific salesperson whose reel generated the interest.
+model CreditLead {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  name      String
+  phone     String
+  email     String?
+  notes     String?
+  status    String   @default("NEW")
+
+  sellerId String
+  seller   User   @relation("CreditLeadsForSeller", fields: [sellerId], references: [id])
+
+  dealershipId String
+  dealership   Dealership @relation(fields: [dealershipId], references: [id])
+
+  videoId String?
+  video   Video?  @relation(fields: [videoId], references: [id])
+
+  submittedById String?
+  submittedBy   User?   @relation("CreditLeadsSubmittedBy", fields: [submittedById], references: [id])
+
+  @@index([sellerId, createdAt])
 }
 
 model Message {

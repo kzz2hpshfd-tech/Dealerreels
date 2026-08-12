@@ -30,6 +30,7 @@ export const authOptions: NextAuthOptions = {
           name: user.name,
           email: user.email,
           role: user.role,
+          phone: user.phone,
           dealershipId: user.dealershipId,
           dealershipName: user.dealership?.name ?? null,
         } as any;
@@ -41,6 +42,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = (user as any).id;
         token.role = (user as any).role;
+        token.phone = (user as any).phone;
         token.dealershipId = (user as any).dealershipId;
         token.dealershipName = (user as any).dealershipName;
       }
@@ -50,6 +52,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         (session.user as any).id = token.id;
         (session.user as any).role = token.role;
+        (session.user as any).phone = token.phone;
         (session.user as any).dealershipId = token.dealershipId;
         (session.user as any).dealershipName = token.dealershipName;
       }

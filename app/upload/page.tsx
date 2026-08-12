@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import Link from "next/link";
 
 const MODELS = ["Ram 1500", "Grand Cherokee", "Compass", "Durango", "Challenger", "Wrangler"];
 
@@ -95,7 +96,12 @@ export default function UploadPage() {
   return (
     <div className="min-h-screen bg-black text-white px-4 py-8 flex justify-center">
       <form onSubmit={onSubmit} className="w-full max-w-sm space-y-4">
-        <h1 className="font-display text-xl">Post a <span className="text-red-500">reel</span></h1>
+        <div className="flex items-center justify-between">
+          <h1 className="font-display text-xl">Post a <span className="text-red-500">reel</span></h1>
+          <Link href="/leads" className="text-xs text-white/50 underline">
+            My Leads
+          </Link>
+        </div>
         <div>
           <label className="text-xs text-white/50 uppercase tracking-wide">Video file</label>
           <input type="file" accept="video/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="w-full mt-1 text-sm" required />
