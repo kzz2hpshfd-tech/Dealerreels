@@ -28,6 +28,33 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ error: "Shopper accounts aren't verified." }, { status: 400 });
   }
 
+  // Approving beyond a dealership's paid seat count is blocked here --
+  // this is the actual enforcement point for the paywall, not signup
+  // itself (every dealer signup still lands as PENDING regardless of
+  // seats; it's approval that requires an open seat). NULL seatLimit
+  // means unlimited/exempt (existing dealerships from before the
+  // paywall shipped).
+  if (verificationStatus === "APPROVED" && target.dealershipId && target.verificationStatus !== "APPROVED") {
+    const dealership = await db.dealership.findUnique({ where: { id: target.dealershipId } });
+    if (dealership && dealership.seatLimit !== null) {
+      const approvedCount = await db.user.count({
+        where: {
+          dealershipId: dealership.id,
+          role: { in: ["SALESPERSON", "DEALERSHIP_ADMIN"] },
+          verificationStatus: "APPROVED",
+        },
+      });
+      if (approvedCount >= dealership.seatLimit) {
+        return NextResponse.json(
+          {
+            error: `${dealership.name} has reached its seat limit (${approvedCount}/${dealership.seatLimit}). They need to purchase more seats before you can approve another account.`,
+          },
+          { status: 409 }
+        );
+      }
+    }
+  }
+
   const updated = await db.user.update({
     where: { id: params.id },
     data: { verificationStatus },

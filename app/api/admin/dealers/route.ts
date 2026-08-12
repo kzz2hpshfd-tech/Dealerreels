@@ -15,20 +15,35 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Admin access required." }, { status: 403 });
   }
 
-  const dealers = await db.user.findMany({
-    where: { role: { in: ["SALESPERSON", "DEALERSHIP_ADMIN"] } },
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      verificationStatus: true,
-      createdAt: true,
-      dealership: { select: { id: true, name: true, city: true, state: true } },
-      _count: { select: { videos: true } },
-    },
-  });
+  const [dealers, approvedCounts] = await Promise.all([
+    db.user.findMany({
+      where: { role: { in: ["SALESPERSON", "DEALERSHIP_ADMIN"] } },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        verificationStatus: true,
+        createdAt: true,
+        dealership: { select: { id: true, name: true, city: true, state: true, seatLimit: true } },
+        _count: { select: { videos: true } },
+      },
+    }),
+    db.user.groupBy({
+      by: ["dealershipId"],
+      where: { role: { in: ["SALESPERSON", "DEALERSHIP_ADMIN"] }, verificationStatus: "APPROVED" },
+      _count: { _all: true },
+    }),
+  ]);
 
-  return NextResponse.json({ dealers });
+  const approvedByDealership = new Map(approvedCounts.map((c) => [c.dealershipId, c._count._all]));
+  const withSeats = dealers.map((d) => ({
+    ...d,
+    dealership: d.dealership
+      ? { ...d.dealership, approvedSeats: approvedByDealership.get(d.dealership.id) ?? 0 }
+      : null,
+  }));
+
+  return NextResponse.json({ dealers: withSeats });
 }

@@ -30,6 +30,16 @@ model Dealership {
   creditApplyUrl String?
   createdAt      DateTime @default(now())
 
+  // No @default here on purpose: existing dealerships (David Stanley
+  // Dodge, the demo one) get NULL on migration -- unlimited, unaffected
+  // by the paywall. Brand-new dealerships are explicitly given 0 seats
+  // in the registration code, so only dealerships created after this
+  // shipped are actually gated. NULL always means unlimited/exempt.
+  seatLimit            Int?
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  subscriptionStatus   String?
+
   users       User[]
   videos      Video[]
   creditLeads CreditLead[]

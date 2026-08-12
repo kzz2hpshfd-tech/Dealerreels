@@ -111,6 +111,12 @@ export async function POST(req: NextRequest) {
           slug,
           city: newDealership.city,
           state: newDealership.state,
+          // Brand-new dealerships start paywalled at 0 seats -- they
+          // need to subscribe (see /billing) before any of their
+          // salespeople can be approved. Existing dealerships were left
+          // at the schema's NULL/unlimited default by the migration and
+          // are unaffected.
+          seatLimit: 0,
         },
       });
       resolvedDealershipId = dealership.id;
