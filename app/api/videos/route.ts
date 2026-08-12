@@ -53,6 +53,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Only dealership accounts can post reels." }, { status: 403 });
   }
 
+  // Checked fresh against the DB rather than the JWT session, since the
+  // session won't reflect an admin's approval until the user logs in
+  // again.
+  const dbUser = await db.user.findUnique({ where: { id: user.id }, select: { verificationStatus: true } });
+  if (dbUser?.verificationStatus === "PENDING") {
+    return NextResponse.json(
+      { error: "Your dealership account is pending verification. You'll be able to post once it's approved." },
+      { status: 403 }
+    );
+  }
+  if (dbUser?.verificationStatus === "REJECTED") {
+    return NextResponse.json({ error: "Your dealership account was not approved to post reels." }, { status: 403 });
+  }
+
   try {
     const { caption, model, tags, videoUrl } = await req.json();
 

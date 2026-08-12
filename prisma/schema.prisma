@@ -14,6 +14,12 @@ enum Role {
   SHOPPER
 }
 
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model Dealership {
   id             String   @id @default(cuid())
   name           String
@@ -47,6 +53,12 @@ model User {
   // signup -- kept as an audit trail, not just a boolean, since TCPA
   // consent records matter if it's ever disputed.
   smsConsentAt DateTime?
+
+  // Defaults to APPROVED so this migration doesn't retroactively lock
+  // out every existing dealer account -- new dealer signups are set to
+  // PENDING explicitly in the registration code. Shoppers are left at
+  // the default since they're never gated on this.
+  verificationStatus VerificationStatus @default(APPROVED)
 
   dealershipId String?
   dealership   Dealership? @relation(fields: [dealershipId], references: [id])
