@@ -187,11 +187,8 @@ export default function RegisterPage() {
                     className="underline text-zinc-300"
                   >
                     Terms &amp; Conditions
-                  </button>{" "}
-                  and consent to be contacted by participating dealerships and DealerReels by phone
-                  call and text message, including using automated dialing or texting technology, at
-                  the phone number I provided above, even if it's on a Do Not Call list. Message and
-                  data rates may apply. Consent is not a condition of purchase.
+                  </button>
+                  .
                 </span>
               </label>
 
