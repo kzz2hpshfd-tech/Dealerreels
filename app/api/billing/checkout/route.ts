@@ -59,6 +59,11 @@ export async function POST(req: NextRequest) {
       },
       success_url: `${origin}/billing?checkout=success`,
       cancel_url: `${origin}/billing?checkout=cancelled`,
+      // Managed Payments (enabled by default on new Stripe accounts) requires a
+      // tax_code on every product, which we don't set. We're not using Stripe
+      // Tax here, so opt this session out rather than guess at a tax code.
+      // Not yet in this SDK's TS types, hence the cast.
+      ...({ managed_payments: { enabled: false } } as any),
     });
 
     return NextResponse.json({ url: checkoutSession.url });
