@@ -6,6 +6,7 @@ import Link from "next/link";
 import {
   Heart, MessageCircle, Share2, Play, Home, Compass,
   PlusSquare, Mail, User, Sparkles, MapPin, X, Check, CreditCard, Send,
+  Volume2, VolumeX,
 } from "lucide-react";
 
 type Comment = {
@@ -44,6 +45,10 @@ export default function FeedClient() {
   const [activeIdx, setActiveIdx] = useState(0);
   const [commentsOpenFor, setCommentsOpenFor] = useState<string | null>(null);
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+  // Browsers require video to start muted for autoplay to work without a
+  // click. Once the user explicitly unmutes, that's a real user gesture,
+  // so it's allowed to stay unmuted across cards.
+  const [muted, setMuted] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // load dealerships for the filter list
@@ -205,6 +210,8 @@ export default function FeedClient() {
               commentCount={commentCounts[v.id] ?? v._count.comments}
               onOpenComments={() => setCommentsOpenFor(v.id)}
               matchScore={vibe.trim() ? v.matchScore ?? null : null}
+              muted={muted}
+              onToggleMute={() => setMuted((m) => !m)}
             />
           ))}
         </div>
@@ -304,6 +311,8 @@ function ReelCard({
   commentCount,
   onOpenComments,
   matchScore,
+  muted,
+  onToggleMute,
 }: {
   video: Video;
   active: boolean;
@@ -314,6 +323,8 @@ function ReelCard({
   commentCount: number;
   onOpenComments: () => void;
   matchScore: number | null;
+  muted: boolean;
+  onToggleMute: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -334,11 +345,19 @@ function ReelCard({
         src={video.videoUrl}
         poster={video.thumbnailUrl ?? undefined}
         loop
-        muted
+        muted={muted}
         playsInline
+        onClick={onToggleMute}
         className="absolute inset-0 w-full h-full object-cover"
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30" />
+      <button
+        onClick={onToggleMute}
+        aria-label={muted ? "Unmute" : "Mute"}
+        className="absolute top-[128px] right-3 z-20 w-8 h-8 rounded-full bg-black/50 backdrop-blur flex items-center justify-center text-white"
+      >
+        {muted ? <VolumeX size={15} /> : <Volume2 size={15} />}
+      </button>
+      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30 pointer-events-none" />
 
       {matchScore !== null && (
         <div className="absolute top-[128px] left-3 z-20 flex items-center gap-1 bg-black/60 backdrop-blur px-2.5 py-1 rounded-full border border-red-500/40">
