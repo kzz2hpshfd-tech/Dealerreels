@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   Heart, MessageCircle, Share2, Play, Home, Compass,
   PlusSquare, Mail, User, Sparkles, MapPin, X, Check, CreditCard, Send,
-  Volume2, VolumeX, Trash2, Bookmark,
+  Volume2, VolumeX, Trash2, Bookmark, CheckCircle2,
 } from "lucide-react";
 
 type Comment = {
@@ -46,6 +46,7 @@ export default function FeedClient() {
   const [activeIdx, setActiveIdx] = useState(0);
   const [commentsOpenFor, setCommentsOpenFor] = useState<string | null>(null);
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+  const [leadFormOpenFor, setLeadFormOpenFor] = useState<string | null>(null);
   // Browsers require video to start muted for autoplay to work without a
   // click. Once the user explicitly unmutes, that's a real user gesture,
   // so it's allowed to stay unmuted across cards.
@@ -229,9 +230,17 @@ export default function FeedClient() {
               onToggleMute={() => setMuted((m) => !m)}
               currentUserId={(session?.user as any)?.id}
               onDelete={() => deleteVideo(v.id)}
+              onOpenLeadForm={() => setLeadFormOpenFor(v.id)}
             />
           ))}
         </div>
+
+        {leadFormOpenFor && (
+          <LeadFormSheet
+            video={videos.find((v) => v.id === leadFormOpenFor)!}
+            onClose={() => setLeadFormOpenFor(null)}
+          />
+        )}
 
         {commentsOpenFor && (
           <CommentsSheet
@@ -338,6 +347,7 @@ function ReelCard({
   onToggleMute,
   currentUserId,
   onDelete,
+  onOpenLeadForm,
 }: {
   video: Video;
   active: boolean;
@@ -354,6 +364,7 @@ function ReelCard({
   onToggleMute: () => void;
   currentUserId?: string;
   onDelete: () => void;
+  onOpenLeadForm: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -365,7 +376,6 @@ function ReelCard({
   }, [active]);
 
   const likeCount = video._count.likes + (isLiked ? 1 : 0);
-  const applyUrl = video.dealership.creditApplyUrl || "#";
 
   return (
     <div className="h-full w-full snap-start relative flex items-end bg-black">
@@ -425,19 +435,17 @@ function ReelCard({
         <button onClick={onSave} className="flex flex-col items-center gap-1 text-white" aria-label={isSaved ? "Unsave" : "Save"}>
           <Bookmark size={24} className={isSaved ? "fill-yellow-400 text-yellow-400" : "text-white"} />
         </button>
-        <a
-          href={applyUrl}
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          onClick={onOpenLeadForm}
           className="flex flex-col items-center gap-1 text-white"
-          aria-label={`Apply for credit for this ${video.model}`}
+          aria-label={`Ask about financing for this ${video.model}`}
         >
           <span className="relative w-11 h-11 rounded-full bg-red-600 border-2 border-white/80 flex items-center justify-center">
             <span className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-30" />
             <CreditCard size={19} className="text-white relative" />
           </span>
           <span className="text-[10px] font-semibold tracking-tight leading-none">APPLY</span>
-        </a>
+        </button>
         <button className="flex flex-col items-center gap-1 text-white">
           <Share2 size={24} />
         </button>
@@ -606,6 +614,130 @@ function CommentsSheet({
           )}
           {error && <p className="text-red-400 text-[11px] mt-1">{error}</p>}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function LeadFormSheet({ video, onClose }: { video: Video; onClose: () => void }) {
+  const { data: session } = useSession();
+  const sessionUser = session?.user as any;
+
+  const [name, setName] = useState(sessionUser?.name ?? "");
+  const [phone, setPhone] = useState(sessionUser?.phone ?? "");
+  const [email, setEmail] = useState(sessionUser?.email ?? "");
+  const [notes, setNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [done, setDone] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmitting(true);
+    setError("");
+    try {
+      const res = await fetch("/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ videoId: video.id, name, phone, email: email || undefined, notes: notes || undefined }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Could not submit your request.");
+        return;
+      }
+      setDone(true);
+    } catch {
+      setError("Could not submit your request.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="absolute inset-0 z-40 flex items-end" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/60" />
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-h-[85%] bg-neutral-950 border-t border-white/10 rounded-t-2xl flex flex-col overflow-y-auto"
+      >
+        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+          <p className="text-white text-sm font-semibold">
+            {done ? "Request sent" : `Ask ${video.seller.name} about financing`}
+          </p>
+          <button onClick={onClose} className="text-white/60 hover:text-white">
+            <X size={18} />
+          </button>
+        </div>
+
+        {done ? (
+          <div className="flex flex-col items-center text-center gap-2 px-4 py-10">
+            <CheckCircle2 size={32} className="text-emerald-500" />
+            <p className="text-white text-sm">
+              Thanks, {name.split(" ")[0]}! {video.seller.name} at {video.dealership.name} will reach out about
+              the {video.model} soon.
+            </p>
+            <button onClick={onClose} className="mt-2 text-xs text-white/50 underline">
+              Close
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={submit} className="px-4 py-4 space-y-3">
+            <p className="text-xs text-white/50">
+              We'll pass your info straight to {video.seller.name} so they can call you about financing for this{" "}
+              {video.model} -- no need to fill out anything on another site.
+            </p>
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold text-white/50">Name</label>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none"
+                required
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold text-white/50">Phone</label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="(555) 555-5555"
+                className="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none"
+                required
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold text-white/50">Email (optional)</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold text-white/50">Anything specific? (optional)</label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={2}
+                className="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none"
+              />
+            </div>
+            {error && <p className="text-red-400 text-[11px]">{error}</p>}
+            <button
+              type="submit"
+              disabled={submitting}
+              className="w-full bg-red-600 disabled:opacity-50 rounded-lg py-2.5 text-sm font-semibold text-white"
+            >
+              {submitting ? "Sending…" : "Request a call"}
+            </button>
+            <p className="text-[10px] text-white/30">
+              By submitting, you agree to be contacted by {video.dealership.name} about this request.
+            </p>
+          </form>
+        )}
       </div>
     </div>
   );
