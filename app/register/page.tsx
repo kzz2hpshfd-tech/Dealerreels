@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import TermsContent from "@/components/TermsContent";
 
 type Dealership = { id: string; name: string };
 type AccountType = "shopper" | "dealer";
@@ -24,6 +25,7 @@ export default function RegisterPage() {
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [smsConsent, setSmsConsent] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
 
   // Dealer fields
   const [name, setName] = useState("");
@@ -179,15 +181,25 @@ export default function RegisterPage() {
                 />
                 <span>
                   I agree to the{" "}
-                  <Link href="/terms" className="underline text-zinc-300">
+                  <button
+                    type="button"
+                    onClick={() => setShowTerms((s) => !s)}
+                    className="underline text-zinc-300"
+                  >
                     Terms &amp; Conditions
-                  </Link>{" "}
+                  </button>{" "}
                   and consent to be contacted by participating dealerships and DealerReels by phone
                   call and text message, including using automated dialing or texting technology, at
                   the phone number I provided above, even if it's on a Do Not Call list. Message and
                   data rates may apply. Consent is not a condition of purchase.
                 </span>
               </label>
+
+              {showTerms && (
+                <div className="border border-zinc-800 rounded-lg p-3 max-h-64 overflow-y-auto bg-black">
+                  <TermsContent headingClassName="text-xs font-semibold text-zinc-300" />
+                </div>
+              )}
             </>
           ) : (
             <>

@@ -124,10 +124,13 @@ export async function POST(req: NextRequest) {
         role: "SALESPERSON",
         avatarInitials: initialsOf(name),
         dealershipId: resolvedDealershipId,
+        // New dealer accounts need review before they can post or
+        // receive leads -- see /admin/dealers.
+        verificationStatus: "PENDING",
       },
     });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, pendingVerification: true });
   } catch (err: any) {
     console.error("register error:", err);
     return NextResponse.json({ error: err.message || "Unknown server error" }, { status: 500 });
