@@ -31,7 +31,7 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           role: user.role,
           dealershipId: user.dealershipId,
-          dealershipName: user.dealership.name,
+          dealershipName: user.dealership?.name ?? null,
         } as any;
       },
     }),

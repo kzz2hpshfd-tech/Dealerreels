@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   Heart, MessageCircle, Share2, Play, Home, Compass,
   PlusSquare, Mail, User, Sparkles, MapPin, X, Check, CreditCard, Send,
-  Volume2, VolumeX, Trash2,
+  Volume2, VolumeX, Trash2, Bookmark,
 } from "lucide-react";
 
 type Comment = {
@@ -42,6 +42,7 @@ export default function FeedClient() {
   const [showFilters, setShowFilters] = useState(false);
   const [following, setFollowing] = useState<Record<string, boolean>>({});
   const [liked, setLiked] = useState<Record<string, boolean>>({});
+  const [saved, setSaved] = useState<Record<string, boolean>>({});
   const [activeIdx, setActiveIdx] = useState(0);
   const [commentsOpenFor, setCommentsOpenFor] = useState<string | null>(null);
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
@@ -100,6 +101,12 @@ export default function FeedClient() {
     setLiked((l) => ({ ...l, [videoId]: !l[videoId] }));
     const res = await fetch(`/api/videos/${videoId}/like`, { method: "POST" });
     if (!res.ok) setLiked((l) => ({ ...l, [videoId]: !l[videoId] }));
+  };
+
+  const toggleSave = async (videoId: string) => {
+    setSaved((s) => ({ ...s, [videoId]: !s[videoId] }));
+    const res = await fetch(`/api/videos/${videoId}/save`, { method: "POST" });
+    if (!res.ok) setSaved((s) => ({ ...s, [videoId]: !s[videoId] }));
   };
 
   const deleteVideo = async (videoId: string) => {
@@ -213,6 +220,8 @@ export default function FeedClient() {
               onFollow={() => toggleFollow(v.seller.id)}
               isLiked={!!liked[v.id]}
               onLike={() => toggleLike(v.id)}
+              isSaved={!!saved[v.id]}
+              onSave={() => toggleSave(v.id)}
               commentCount={commentCounts[v.id] ?? v._count.comments}
               onOpenComments={() => setCommentsOpenFor(v.id)}
               matchScore={vibe.trim() ? v.matchScore ?? null : null}
@@ -247,7 +256,7 @@ export default function FeedClient() {
             <PlusSquare size={18} className="text-white" />
           </Link>
           <NavIcon icon={<Mail size={20} />} label="Inbox" href="/messages" />
-          <NavIcon icon={<User size={20} />} label="Profile" />
+          <NavIcon icon={<User size={20} />} label="Saved" href="/saved" />
         </div>
       </div>
     </div>
@@ -320,6 +329,8 @@ function ReelCard({
   onFollow,
   isLiked,
   onLike,
+  isSaved,
+  onSave,
   commentCount,
   onOpenComments,
   matchScore,
@@ -334,6 +345,8 @@ function ReelCard({
   onFollow: () => void;
   isLiked: boolean;
   onLike: () => void;
+  isSaved: boolean;
+  onSave: () => void;
   commentCount: number;
   onOpenComments: () => void;
   matchScore: number | null;
@@ -408,6 +421,9 @@ function ReelCard({
         <button onClick={onOpenComments} className="flex flex-col items-center gap-1 text-white">
           <MessageCircle size={25} />
           <span className="text-[11px]">{commentCount}</span>
+        </button>
+        <button onClick={onSave} className="flex flex-col items-center gap-1 text-white" aria-label={isSaved ? "Unsave" : "Save"}>
+          <Bookmark size={24} className={isSaved ? "fill-yellow-400 text-yellow-400" : "text-white"} />
         </button>
         <a
           href={applyUrl}
