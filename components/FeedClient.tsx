@@ -219,7 +219,7 @@ export default function FeedClient() {
                   )}
                 </Link>
               )}
-              <button onClick={() => signOut()} className="text-white/40 text-[11px] underline">
+              <button onClick={() => signOut({ callbackUrl: "/login" })} className="text-white/40 text-[11px] underline">
                 Sign out
               </button>
             </div>
