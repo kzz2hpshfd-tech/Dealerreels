@@ -12,6 +12,7 @@ type Message = {
   createdAt: string;
   senderId: string;
   recipientId: string;
+  videoId: string | null;
 };
 
 type OtherUser = { id: string; name: string; avatarInitials: string | null };
@@ -103,7 +104,10 @@ export default function ThreadPage() {
           {messages.map((m) => {
             const fromMe = m.senderId === myId;
             return (
-              <div key={m.id} className={`flex ${fromMe ? "justify-end" : "justify-start"}`}>
+              <div key={m.id} className={`flex flex-col ${fromMe ? "items-end" : "items-start"}`}>
+                {m.videoId && (
+                  <p className="text-[10px] text-white/30 mb-0.5 px-1">Automatic message</p>
+                )}
                 <div
                   className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm ${
                     fromMe ? "bg-red-600 text-white" : "bg-white/10 text-white"

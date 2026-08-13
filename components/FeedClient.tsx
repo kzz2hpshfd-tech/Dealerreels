@@ -119,21 +119,27 @@ export default function FeedClient() {
 
   const shareVideo = async (video: Video) => {
     const url = `${window.location.origin}/feed?v=${video.id}`;
+    let shared = false;
     if (navigator.share) {
       try {
         await navigator.share({ title: `${video.seller.name} on DealerReels`, text: video.caption, url });
+        shared = true;
       } catch {
-        // user cancelled the native share sheet -- not an error
+        // user cancelled the native share sheet -- not an error, and not a share
       }
-      return;
+    } else {
+      try {
+        await navigator.clipboard.writeText(url);
+        setShareMessage("Link copied!");
+        shared = true;
+      } catch {
+        setShareMessage("Could not copy link.");
+      }
+      setTimeout(() => setShareMessage(""), 2000);
     }
-    try {
-      await navigator.clipboard.writeText(url);
-      setShareMessage("Link copied!");
-    } catch {
-      setShareMessage("Could not copy link.");
+    if (shared) {
+      fetch(`/api/videos/${video.id}/share`, { method: "POST" }).catch(() => {});
     }
-    setTimeout(() => setShareMessage(""), 2000);
   };
 
   // debounced vibe search against the real Claude-powered endpoint

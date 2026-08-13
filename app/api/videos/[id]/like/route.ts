@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { sendAutoEngagementMessage } from "@/lib/autoMessage";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
@@ -22,5 +23,6 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
 
   await db.like.create({ data: { userId, videoId } });
+  sendAutoEngagementMessage(videoId, userId).catch((err) => console.error("auto-message error:", err));
   return NextResponse.json({ liked: true });
 }
