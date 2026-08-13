@@ -125,6 +125,7 @@ model Video {
   comments    Comment[]
   saves       SavedVideo[]
   creditLeads CreditLead[]
+  messages    Message[]
 
   @@index([dealershipId, model])
   @@index([createdAt])
@@ -202,6 +203,14 @@ model Message {
   sender      User   @relation("SentMessages", fields: [senderId], references: [id])
   recipientId String
   recipient   User   @relation("ReceivedMessages", fields: [recipientId], references: [id])
+
+  // Set only on the automatic "thanks for checking out this vehicle"
+  // message sent the first time a shopper likes/comments/shares a reel --
+  // never on messages someone typed themselves. Its presence is also how
+  // we avoid sending that automatic message more than once per
+  // shopper/video pair.
+  videoId String?
+  video   Video?  @relation(fields: [videoId], references: [id])
 
   @@index([senderId, recipientId, createdAt])
   @@index([recipientId, senderId, createdAt])

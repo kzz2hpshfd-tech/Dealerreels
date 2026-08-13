@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { sendAutoEngagementMessage } from "@/lib/autoMessage";
 
 export const dynamic = "force-dynamic";
 
@@ -40,5 +41,6 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     },
   });
 
+  sendAutoEngagementMessage(params.id, userId).catch((err) => console.error("auto-message error:", err));
   return NextResponse.json({ comment });
 }
