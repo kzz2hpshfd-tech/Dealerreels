@@ -30,7 +30,7 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (sessionStatus === "unauthenticated") router.push("/login");
+    if (sessionStatus === "unauthenticated") router.push("/login?callbackUrl=/messages");
   }, [sessionStatus, router]);
 
   useEffect(() => {

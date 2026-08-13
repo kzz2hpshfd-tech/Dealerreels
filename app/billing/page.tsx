@@ -36,7 +36,7 @@ function BillingPageInner() {
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
 
   useEffect(() => {
-    if (sessionStatus === "unauthenticated") router.push("/login");
+    if (sessionStatus === "unauthenticated") router.push("/login?callbackUrl=/billing");
   }, [sessionStatus, router]);
 
   useEffect(() => {

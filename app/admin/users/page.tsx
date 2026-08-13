@@ -37,7 +37,7 @@ export default function AdminUsersPage() {
   const [query, setQuery] = useState("");
 
   useEffect(() => {
-    if (sessionStatus === "unauthenticated") router.push("/login");
+    if (sessionStatus === "unauthenticated") router.push("/login?callbackUrl=/admin/users");
   }, [sessionStatus, router]);
 
   useEffect(() => {

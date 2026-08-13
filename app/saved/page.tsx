@@ -22,7 +22,7 @@ export default function SavedPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (sessionStatus === "unauthenticated") router.push("/login");
+    if (sessionStatus === "unauthenticated") router.push("/login?callbackUrl=/saved");
   }, [sessionStatus, router]);
 
   useEffect(() => {
