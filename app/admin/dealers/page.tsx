@@ -28,7 +28,7 @@ export default function AdminDealersPage() {
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("PENDING");
 
   useEffect(() => {
-    if (sessionStatus === "unauthenticated") router.push("/login");
+    if (sessionStatus === "unauthenticated") router.push("/login?callbackUrl=/admin/dealers");
   }, [sessionStatus, router]);
 
   useEffect(() => {

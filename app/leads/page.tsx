@@ -25,7 +25,7 @@ export default function LeadsPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (sessionStatus === "unauthenticated") router.push("/login");
+    if (sessionStatus === "unauthenticated") router.push("/login?callbackUrl=/leads");
   }, [sessionStatus, router]);
 
   useEffect(() => {

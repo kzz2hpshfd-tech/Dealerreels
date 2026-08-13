@@ -34,8 +34,10 @@ export default function ThreadPage() {
   const myId = (session?.user as any)?.id;
 
   useEffect(() => {
-    if (sessionStatus === "unauthenticated") router.push("/login");
-  }, [sessionStatus, router]);
+    if (sessionStatus === "unauthenticated") {
+      router.push(`/login?callbackUrl=${encodeURIComponent(`/messages/${otherId}`)}`);
+    }
+  }, [sessionStatus, router, otherId]);
 
   useEffect(() => {
     if (sessionStatus !== "authenticated") return;

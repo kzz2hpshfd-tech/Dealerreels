@@ -19,7 +19,7 @@ export default function UploadPage() {
   const [newLeadCount, setNewLeadCount] = useState(0);
 
   useEffect(() => {
-    if (sessionStatus === "unauthenticated") router.push("/login");
+    if (sessionStatus === "unauthenticated") router.push("/login?callbackUrl=/upload");
   }, [sessionStatus, router]);
 
   useEffect(() => {

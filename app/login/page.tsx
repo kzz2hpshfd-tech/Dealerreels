@@ -1,19 +1,32 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageInner />
+    </Suspense>
+  );
+}
+
+function LoginPageInner() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const searchParams = useSearchParams();
+  // Lets protected pages send you back to where you were headed after you
+  // log in, instead of always dumping you on /feed.
+  const callbackUrl = searchParams.get("callbackUrl") || "/feed";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await signIn("credentials", {
       email,
       password,
-      callbackUrl: "/feed",
+      callbackUrl,
     });
   };
 
