@@ -8,7 +8,8 @@ const MODELS = ["Ram 1500", "Grand Cherokee", "Compass", "Durango", "Challenger"
 
 export default function UploadPage() {
   const router = useRouter();
-  const { status: sessionStatus } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
+  const isPlatformAdmin = (session?.user as any)?.role === "PLATFORM_ADMIN";
   const [file, setFile] = useState<File | null>(null);
   const [caption, setCaption] = useState("");
   const [model, setModel] = useState(MODELS[0]);
@@ -109,6 +110,11 @@ export default function UploadPage() {
         <div className="flex items-center justify-between">
           <h1 className="font-display text-xl">Post a <span className="text-red-500">reel</span></h1>
           <div className="flex items-center gap-3">
+            {isPlatformAdmin && (
+              <Link href="/admin/users" className="text-xs text-white/50 underline">
+                All Users
+              </Link>
+            )}
             <Link href="/billing" className="text-xs text-white/50 underline">
               Billing
             </Link>
