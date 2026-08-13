@@ -74,7 +74,10 @@ export default function AdminDealersPage() {
           <Link href="/feed" className="text-white/70">
             <ArrowLeft size={18} />
           </Link>
-          <h1 className="text-sm font-semibold">Verify Dealers</h1>
+          <h1 className="text-sm font-semibold flex-1">Verify Dealers</h1>
+          <Link href="/admin/users" className="text-[11px] text-white/50 underline">
+            All Users
+          </Link>
         </div>
 
         {!isAdmin && (
