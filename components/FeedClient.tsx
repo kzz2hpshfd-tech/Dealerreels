@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   Heart, MessageCircle, Share2, Play, Home, Compass,
   PlusSquare, Mail, User, Sparkles, MapPin, X, Check, CreditCard, Send,
-  Volume2, VolumeX, Trash2, Bookmark, CheckCircle2, Bell,
+  Volume2, VolumeX, Trash2, Bookmark, CheckCircle2, Bell, ShieldCheck,
 } from "lucide-react";
 
 type Comment = {
@@ -204,6 +204,11 @@ export default function FeedClient() {
               </span>
             </div>
             <div className="flex items-center gap-3">
+              {sessionUser?.role === "PLATFORM_ADMIN" && (
+                <Link href="/admin/users" className="text-white/70" aria-label="Admin: all users">
+                  <ShieldCheck size={16} />
+                </Link>
+              )}
               {isDealerAccount && (
                 <Link href="/leads" className="relative text-white/70">
                   <Bell size={16} />
