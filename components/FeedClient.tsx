@@ -52,6 +52,7 @@ export default function FeedClient() {
   // click. Once the user explicitly unmutes, that's a real user gesture,
   // so it's allowed to stay unmuted across cards.
   const [muted, setMuted] = useState(true);
+  const [shareMessage, setShareMessage] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
 
   // load dealerships for the filter list
@@ -101,6 +102,39 @@ export default function FeedClient() {
   useEffect(() => {
     if (!vibe.trim()) loadFeed();
   }, [loadFeed, vibe]);
+
+  // Jump to a specific reel when opened via a shared /feed?v=<id> link, then
+  // clean the URL so it doesn't keep re-jumping on later filter refetches.
+  useEffect(() => {
+    if (!videos.length) return;
+    const target = new URLSearchParams(window.location.search).get("v");
+    if (!target) return;
+    const idx = videos.findIndex((v) => v.id === target);
+    if (idx === -1) return;
+    setActiveIdx(idx);
+    const el = containerRef.current;
+    if (el) el.scrollTop = idx * el.clientHeight;
+    window.history.replaceState({}, "", "/feed");
+  }, [videos]);
+
+  const shareVideo = async (video: Video) => {
+    const url = `${window.location.origin}/feed?v=${video.id}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `${video.seller.name} on DealerReels`, text: video.caption, url });
+      } catch {
+        // user cancelled the native share sheet -- not an error
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareMessage("Link copied!");
+    } catch {
+      setShareMessage("Could not copy link.");
+    }
+    setTimeout(() => setShareMessage(""), 2000);
+  };
 
   // debounced vibe search against the real Claude-powered endpoint
   useEffect(() => {
@@ -270,9 +304,16 @@ export default function FeedClient() {
               currentUserId={(session?.user as any)?.id}
               onDelete={() => deleteVideo(v.id)}
               onOpenLeadForm={() => setLeadFormOpenFor(v.id)}
+              onShare={() => shareVideo(v)}
             />
           ))}
         </div>
+
+        {shareMessage && (
+          <div className="absolute top-24 left-1/2 -translate-x-1/2 z-40 bg-black/90 border border-white/15 rounded-full px-3 py-1.5 text-[12px] text-white">
+            {shareMessage}
+          </div>
+        )}
 
         {leadFormOpenFor && (
           <LeadFormSheet
@@ -387,6 +428,7 @@ function ReelCard({
   currentUserId,
   onDelete,
   onOpenLeadForm,
+  onShare,
 }: {
   video: Video;
   active: boolean;
@@ -404,6 +446,7 @@ function ReelCard({
   currentUserId?: string;
   onDelete: () => void;
   onOpenLeadForm: () => void;
+  onShare: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -485,7 +528,7 @@ function ReelCard({
           </span>
           <span className="text-[10px] font-semibold tracking-tight leading-none">APPLY</span>
         </button>
-        <button className="flex flex-col items-center gap-1 text-white">
+        <button onClick={onShare} className="flex flex-col items-center gap-1 text-white" aria-label="Share this reel">
           <Share2 size={24} />
         </button>
         {currentUserId && video.seller.id === currentUserId && (
