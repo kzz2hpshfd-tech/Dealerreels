@@ -9,12 +9,26 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const dealershipId = searchParams.get("dealershipId") || undefined;
+  // Lets an embedded badge on a dealership's own website link straight to
+  // that dealership's feed without needing to know its internal ID -- the
+  // slug is the one identifier that's safe to hardcode into a public,
+  // third-party embed.
+  const dealershipSlug = searchParams.get("dealershipSlug") || undefined;
   const model = searchParams.get("model") || undefined;
+
+  let resolvedDealershipId = dealershipId;
+  if (!resolvedDealershipId && dealershipSlug) {
+    const match = await db.dealership.findUnique({ where: { slug: dealershipSlug }, select: { id: true } });
+    // An unrecognized slug must return zero results, not silently fall
+    // through to showing every dealership's reels.
+    if (!match) return NextResponse.json({ videos: [] });
+    resolvedDealershipId = match.id;
+  }
 
   const videos = await db.video.findMany({
     where: {
       status: "READY",
-      ...(dealershipId ? { dealershipId } : {}),
+      ...(resolvedDealershipId ? { dealershipId: resolvedDealershipId } : {}),
       ...(model ? { model } : {}),
     },
     orderBy: { createdAt: "desc" },

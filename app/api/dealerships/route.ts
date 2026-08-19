@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const dealerships = await db.dealership.findMany({
-    select: { id: true, name: true },
+    select: { id: true, name: true, slug: true },
     orderBy: { name: "asc" },
   });
 
