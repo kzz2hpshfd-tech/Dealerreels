@@ -34,7 +34,7 @@ type Video = {
 export default function FeedClient() {
   const { data: session } = useSession();
   const [videos, setVideos] = useState<Video[]>([]);
-  const [dealerships, setDealerships] = useState<{ id: string; name: string }[]>([]);
+  const [dealerships, setDealerships] = useState<{ id: string; name: string; slug: string }[]>([]);
   const [dealershipId, setDealershipId] = useState<string>("");
   const [model, setModel] = useState("All models");
   const [vibe, setVibe] = useState("");
@@ -55,6 +55,14 @@ export default function FeedClient() {
   const [shareMessage, setShareMessage] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Lets a badge embedded on a dealership's own website (e.g. /feed?dealership=david-stanley-dodge)
+  // land the visitor on just that dealership's reels -- read once on mount,
+  // resolved server-side by slug so the URL never needs an internal ID.
+  const [urlDealershipSlug] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    return new URLSearchParams(window.location.search).get("dealership") || "";
+  });
+
   // load dealerships for the filter list
   useEffect(() => {
     fetch("/api/dealerships")
@@ -62,6 +70,10 @@ export default function FeedClient() {
       .then((d) => setDealerships(d.dealerships ?? []))
       .catch(() => {});
   }, []);
+
+  const urlDealership = urlDealershipSlug
+    ? dealerships.find((d) => d.slug === urlDealershipSlug)
+    : undefined;
 
   // Poll for new leads while a dealer account has the app open -- the
   // closest thing to a live notification without a texting/email
@@ -93,11 +105,12 @@ export default function FeedClient() {
   const loadFeed = useCallback(async () => {
     const params = new URLSearchParams();
     if (dealershipId) params.set("dealershipId", dealershipId);
+    else if (urlDealershipSlug) params.set("dealershipSlug", urlDealershipSlug);
     if (model !== "All models") params.set("model", model);
     const res = await fetch(`/api/videos?${params.toString()}`);
     const data = await res.json();
     setVideos(data.videos ?? []);
-  }, [dealershipId, model]);
+  }, [dealershipId, model, urlDealershipSlug]);
 
   useEffect(() => {
     if (!vibe.trim()) loadFeed();
@@ -150,14 +163,18 @@ export default function FeedClient() {
       const res = await fetch("/api/vibe-search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: vibe, dealershipId: dealershipId || undefined }),
+        body: JSON.stringify({
+          query: vibe,
+          dealershipId: dealershipId || undefined,
+          dealershipSlug: !dealershipId && urlDealershipSlug ? urlDealershipSlug : undefined,
+        }),
       });
       const data = await res.json();
       setVideos(data.videos ?? []);
       setVibeLoading(false);
     }, 500);
     return () => clearTimeout(handle);
-  }, [vibe, dealershipId]);
+  }, [vibe, dealershipId, urlDealershipSlug]);
 
   const toggleFollow = async (sellerId: string) => {
     setFollowing((f) => ({ ...f, [sellerId]: !f[sellerId] }));
@@ -247,6 +264,15 @@ export default function FeedClient() {
               <MapPin size={16} />
             </button>
           </div>
+
+          {urlDealership && !dealershipId && (
+            <div className="mt-2 flex items-center gap-1.5 text-[11px] text-white/60">
+              <MapPin size={11} className="text-red-400" />
+              <span>
+                Showing reels from <span className="text-white font-semibold">{urlDealership.name}</span>
+              </span>
+            </div>
+          )}
 
           {showFilters && (
             <div className="mt-2 flex flex-col gap-2 bg-neutral-900/95 border border-white/10 rounded-2xl p-3">
