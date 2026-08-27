@@ -327,6 +327,7 @@ export default function FeedClient() {
               key={v.id}
               video={v}
               active={i === activeIdx}
+              shouldLoad={Math.abs(i - activeIdx) <= 1}
               isFollowing={!!following[v.seller.id]}
               onFollow={() => toggleFollow(v.seller.id)}
               isLiked={!!liked[v.id]}
@@ -451,6 +452,7 @@ function NavIcon({
 function ReelCard({
   video,
   active,
+  shouldLoad,
   isFollowing,
   onFollow,
   isLiked,
@@ -469,6 +471,7 @@ function ReelCard({
 }: {
   video: Video;
   active: boolean;
+  shouldLoad: boolean;
   isFollowing: boolean;
   onFollow: () => void;
   isLiked: boolean;
@@ -500,7 +503,14 @@ function ReelCard({
     <div className="h-full w-full snap-start relative flex items-end bg-black">
       <video
         ref={videoRef}
-        src={video.videoUrl}
+        // Only the active reel and its immediate neighbor load any video
+        // bytes at all -- previously every reel in the feed got a src and
+        // started fetching simultaneously the moment the feed opened,
+        // splitting bandwidth across all of them instead of prioritizing
+        // the one actually on screen. The poster still shows immediately
+        // either way.
+        src={shouldLoad ? video.videoUrl : undefined}
+        preload={shouldLoad ? "auto" : "none"}
         poster={video.thumbnailUrl ?? undefined}
         loop
         muted={muted}
