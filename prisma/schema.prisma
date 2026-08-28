@@ -40,6 +40,13 @@ model Dealership {
   stripeSubscriptionId String?
   subscriptionStatus   String?
 
+  // Set by an admin granting a prospect (e.g. a demo) temporary posting
+  // access without needing paid seats yet. NULL means no trial is
+  // active. Once past, posting is blocked again unless the dealership
+  // has since bought real seats (seatLimit > 0) -- see the posting
+  // gate in app/api/videos/route.ts.
+  trialEndsAt DateTime?
+
   users       User[]
   videos      Video[]
   creditLeads CreditLead[]

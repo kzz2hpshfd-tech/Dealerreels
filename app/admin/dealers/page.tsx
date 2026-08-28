@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Check, X, RotateCcw } from "lucide-react";
+import { ArrowLeft, Check, X, RotateCcw, Clock } from "lucide-react";
 
 type Dealer = {
   id: string;
@@ -13,7 +13,15 @@ type Dealer = {
   role: string;
   verificationStatus: "PENDING" | "APPROVED" | "REJECTED";
   createdAt: string;
-  dealership: { id: string; name: string; city: string; state: string; seatLimit: number | null; approvedSeats: number } | null;
+  dealership: {
+    id: string;
+    name: string;
+    city: string;
+    state: string;
+    seatLimit: number | null;
+    approvedSeats: number;
+    trialEndsAt: string | null;
+  } | null;
   _count: { videos: number };
 };
 
@@ -44,20 +52,26 @@ export default function AdminDealersPage() {
 
   const [actionError, setActionError] = useState("");
 
-  async function setStatus(id: string, verificationStatus: Dealer["verificationStatus"]) {
+  async function patchDealer(id: string, body: { verificationStatus: Dealer["verificationStatus"]; startTrial?: boolean }) {
     setActionError("");
     const prev = dealers;
-    setDealers((ds) => ds.map((d) => (d.id === id ? { ...d, verificationStatus } : d)));
+    setDealers((ds) => ds.map((d) => (d.id === id ? { ...d, verificationStatus: body.verificationStatus } : d)));
     const res = await fetch(`/api/admin/dealers/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ verificationStatus }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) {
       setDealers(prev);
       const data = await res.json().catch(() => ({}));
       setActionError(data.error ?? "Could not update this account.");
+      return;
     }
+    // Refresh so trialEndsAt (which the PATCH response doesn't include) shows up immediately.
+    fetch("/api/admin/dealers")
+      .then((r) => r.json())
+      .then((d) => setDealers(d.dealers ?? []))
+      .catch(() => {});
   }
 
   if (sessionStatus !== "authenticated") {
@@ -116,68 +130,91 @@ export default function AdminDealersPage() {
             )}
 
             <div className="divide-y divide-white/10">
-              {visible.map((d) => (
-                <div key={d.id} className="px-4 py-3 space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold">{d.name}</p>
-                    <span
-                      className={`text-[10px] px-2 py-0.5 rounded-full border ${
-                        d.verificationStatus === "PENDING"
-                          ? "border-yellow-500/50 text-yellow-300"
-                          : d.verificationStatus === "APPROVED"
-                          ? "border-emerald-500/50 text-emerald-300"
-                          : "border-red-500/50 text-red-300"
-                      }`}
-                    >
-                      {d.verificationStatus}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-white/50">{d.email}</p>
-                  {d.dealership && (
-                    <p className="text-[11px] text-white/50">
-                      {d.dealership.name} &middot; {d.dealership.city}, {d.dealership.state}
-                      {" "}&middot;{" "}
-                      {d.dealership.seatLimit === null ? (
-                        <span className="text-white/40">unlimited seats</span>
-                      ) : (
-                        <span className={d.dealership.approvedSeats >= d.dealership.seatLimit ? "text-red-400" : "text-white/40"}>
-                          {d.dealership.approvedSeats}/{d.dealership.seatLimit} seats
-                        </span>
-                      )}
+              {visible.map((d) => {
+                const trialEndsAt = d.dealership?.trialEndsAt ? new Date(d.dealership.trialEndsAt) : null;
+                const trialActive = trialEndsAt ? trialEndsAt > new Date() : false;
+                const trialExpired = trialEndsAt ? trialEndsAt <= new Date() : false;
+                return (
+                  <div key={d.id} className="px-4 py-3 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold">{d.name}</p>
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded-full border ${
+                          d.verificationStatus === "PENDING"
+                            ? "border-yellow-500/50 text-yellow-300"
+                            : d.verificationStatus === "APPROVED"
+                            ? "border-emerald-500/50 text-emerald-300"
+                            : "border-red-500/50 text-red-300"
+                        }`}
+                      >
+                        {d.verificationStatus}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-white/50">{d.email}</p>
+                    {d.dealership && (
+                      <p className="text-[11px] text-white/50">
+                        {d.dealership.name} &middot; {d.dealership.city}, {d.dealership.state}
+                        {" "}&middot;{" "}
+                        {d.dealership.seatLimit === null ? (
+                          <span className="text-white/40">unlimited seats</span>
+                        ) : (
+                          <span className={d.dealership.approvedSeats >= d.dealership.seatLimit ? "text-red-400" : "text-white/40"}>
+                            {d.dealership.approvedSeats}/{d.dealership.seatLimit} seats
+                          </span>
+                        )}
+                      </p>
+                    )}
+                    {trialActive && trialEndsAt && (
+                      <p className="text-[11px] text-blue-300 flex items-center gap-1">
+                        <Clock size={10} /> Trial active &mdash; ends {trialEndsAt.toLocaleString()}
+                      </p>
+                    )}
+                    {trialExpired && (
+                      <p className="text-[11px] text-red-400 flex items-center gap-1">
+                        <Clock size={10} /> Trial ended &mdash; posting is blocked until they subscribe
+                      </p>
+                    )}
+                    <p className="text-[10px] text-white/30">
+                      Joined {new Date(d.createdAt).toLocaleDateString()} &middot; {d._count.videos} reel
+                      {d._count.videos === 1 ? "" : "s"} posted
                     </p>
-                  )}
-                  <p className="text-[10px] text-white/30">
-                    Joined {new Date(d.createdAt).toLocaleDateString()} &middot; {d._count.videos} reel
-                    {d._count.videos === 1 ? "" : "s"} posted
-                  </p>
-                  <div className="flex items-center gap-2 pt-1">
-                    {d.verificationStatus !== "APPROVED" && (
-                      <button
-                        onClick={() => setStatus(d.id, "APPROVED")}
-                        className="flex items-center gap-1 text-[11px] text-emerald-400 border border-emerald-500/40 rounded-full px-2.5 py-1"
-                      >
-                        <Check size={11} /> Approve
-                      </button>
-                    )}
-                    {d.verificationStatus !== "REJECTED" && (
-                      <button
-                        onClick={() => setStatus(d.id, "REJECTED")}
-                        className="flex items-center gap-1 text-[11px] text-red-400 border border-red-500/40 rounded-full px-2.5 py-1"
-                      >
-                        <X size={11} /> Reject
-                      </button>
-                    )}
-                    {d.verificationStatus !== "PENDING" && (
-                      <button
-                        onClick={() => setStatus(d.id, "PENDING")}
-                        className="flex items-center gap-1 text-[11px] text-white/40 border border-white/15 rounded-full px-2.5 py-1"
-                      >
-                        <RotateCcw size={11} /> Reset
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2 pt-1 flex-wrap">
+                      {d.verificationStatus !== "APPROVED" && (
+                        <button
+                          onClick={() => patchDealer(d.id, { verificationStatus: "APPROVED" })}
+                          className="flex items-center gap-1 text-[11px] text-emerald-400 border border-emerald-500/40 rounded-full px-2.5 py-1"
+                        >
+                          <Check size={11} /> Approve
+                        </button>
+                      )}
+                      {d.verificationStatus !== "APPROVED" && (
+                        <button
+                          onClick={() => patchDealer(d.id, { verificationStatus: "APPROVED", startTrial: true })}
+                          className="flex items-center gap-1 text-[11px] text-blue-300 border border-blue-500/40 rounded-full px-2.5 py-1"
+                        >
+                          <Clock size={11} /> Start 24h Trial
+                        </button>
+                      )}
+                      {d.verificationStatus !== "REJECTED" && (
+                        <button
+                          onClick={() => patchDealer(d.id, { verificationStatus: "REJECTED" })}
+                          className="flex items-center gap-1 text-[11px] text-red-400 border border-red-500/40 rounded-full px-2.5 py-1"
+                        >
+                          <X size={11} /> Reject
+                        </button>
+                      )}
+                      {d.verificationStatus !== "PENDING" && (
+                        <button
+                          onClick={() => patchDealer(d.id, { verificationStatus: "PENDING" })}
+                          className="flex items-center gap-1 text-[11px] text-white/40 border border-white/15 rounded-full px-2.5 py-1"
+                        >
+                          <RotateCcw size={11} /> Reset
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </>
         )}
