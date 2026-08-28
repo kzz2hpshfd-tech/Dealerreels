@@ -3,6 +3,25 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 
+// Public, unauthenticated lookup -- powers the personalized sign-up page a
+// shopper lands on after tapping a dealership's embedded "Watch the Reel"
+// badge for a specific vehicle, before they have an account.
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+  const video = await db.video.findUnique({
+    where: { id: params.id },
+    select: {
+      id: true,
+      model: true,
+      caption: true,
+      dealership: { select: { name: true, city: true, state: true } },
+    },
+  });
+  if (!video) {
+    return NextResponse.json({ error: "Reel not found." }, { status: 404 });
+  }
+  return NextResponse.json({ video });
+}
+
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
   const userId = (session?.user as any)?.id;

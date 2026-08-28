@@ -42,13 +42,21 @@ export async function POST(req: NextRequest) {
     const passwordHash = await bcrypt.hash(password, 10);
 
     if (accountType === "shopper") {
-      const { firstName, lastName, phone, smsConsent } = body;
+      let { firstName, lastName, phone, smsConsent } = body;
+
+      // The vehicle-specific sign-up page (reached via a dealership's
+      // embedded badge) only asks for email, phone, and password to keep
+      // friction low -- fall back to a name derived from the email so the
+      // rest of the app (comments, messages, avatar initials) still has
+      // something to display. A shopper can fill in their real name later.
+      if (!firstName && !lastName && typeof email === "string") {
+        const local = email.split("@")[0]?.replace(/[^a-zA-Z]+/g, " ").trim();
+        firstName = local ? local[0].toUpperCase() + local.slice(1) : "Shopper";
+        lastName = "";
+      }
 
       if (!firstName || typeof firstName !== "string") {
         return NextResponse.json({ error: "First name is required." }, { status: 400 });
-      }
-      if (!lastName || typeof lastName !== "string") {
-        return NextResponse.json({ error: "Last name is required." }, { status: 400 });
       }
       const digitCount = typeof phone === "string" ? phone.replace(/\D/g, "").length : 0;
       if (digitCount < 10) {
