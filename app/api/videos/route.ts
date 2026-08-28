@@ -81,6 +81,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Your dealership account was not approved to post reels." }, { status: 403 });
   }
 
+  // A dealership on a 24-hour trial (granted by an admin before they've
+  // bought seats) loses posting access once the trial expires, unless
+  // they've since actually subscribed (seatLimit > 0 means real paid
+  // seats from checkout -- see app/api/billing/webhook). Dealerships
+  // that were never put on a trial (trialEndsAt is null) are unaffected.
+  const dealership = await db.dealership.findUnique({
+    where: { id: user.dealershipId },
+    select: { trialEndsAt: true, seatLimit: true },
+  });
+  if (dealership?.trialEndsAt && dealership.trialEndsAt < new Date() && !(dealership.seatLimit && dealership.seatLimit > 0)) {
+    return NextResponse.json(
+      { error: "Your free trial has ended. Subscribe on the Billing page to keep posting." },
+      { status: 403 }
+    );
+  }
+
   try {
     const { caption, model, tags, videoUrl } = await req.json();
 

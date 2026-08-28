@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
         role: true,
         verificationStatus: true,
         createdAt: true,
-        dealership: { select: { id: true, name: true, city: true, state: true, seatLimit: true } },
+        dealership: { select: { id: true, name: true, city: true, state: true, seatLimit: true, trialEndsAt: true } },
         _count: { select: { videos: true } },
       },
     }),
