@@ -110,6 +110,10 @@ export default function FeedClient() {
     const res = await fetch(`/api/videos?${params.toString()}`);
     const data = await res.json();
     setVideos(data.videos ?? []);
+    // Same reset as the vibe-search path -- a filter change replaces the
+    // whole list, so stay stuck at a stale scroll position without this.
+    setActiveIdx(0);
+    if (containerRef.current) containerRef.current.scrollTop = 0;
   }, [dealershipId, model, urlDealershipSlug]);
 
   useEffect(() => {
@@ -171,6 +175,13 @@ export default function FeedClient() {
       });
       const data = await res.json();
       setVideos(data.videos ?? []);
+      // A vibe search reorders (or replaces) the whole list, but the feed
+      // stayed scrolled wherever it was -- the shopper just kept looking
+      // at whatever used to be at that scroll position instead of the new
+      // top match. Jump back to the top so the best result is what's
+      // actually on screen.
+      setActiveIdx(0);
+      if (containerRef.current) containerRef.current.scrollTop = 0;
       setVibeLoading(false);
     }, 500);
     return () => clearTimeout(handle);
