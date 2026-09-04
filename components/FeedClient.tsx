@@ -377,8 +377,8 @@ export default function FeedClient() {
 
         {/* Bottom nav */}
         <div className="absolute bottom-0 left-0 right-0 z-30 bg-black/90 backdrop-blur border-t border-white/10 px-2 pt-2 pb-3 flex items-center justify-between">
-          <NavIcon icon={<Home size={20} />} label="Home" active />
-          <NavIcon icon={<Compass size={20} />} label="Discover" />
+          <NavIcon icon={<Home size={20} />} label="Home" href="/feed" active />
+          <NavIcon icon={<Compass size={20} />} label="Discover" href="/discover" />
           <Link href="/upload" className="w-9 h-8 rounded-lg bg-red-600 flex items-center justify-center -mt-1">
             <PlusSquare size={18} className="text-white" />
           </Link>

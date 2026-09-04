@@ -28,19 +28,23 @@ Return ONLY a JSON array, no prose, no markdown fences, like:
 
 Score reflects how well the video matches the vibe of the query (mood, use-case, lifestyle — not just literal keyword overlap).`;
 
-  const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 1000,
-    messages: [{ role: "user", content: prompt }],
-  });
-
-  const textBlock = response.content.find((b) => b.type === "text");
-  if (!textBlock || textBlock.type !== "text") return candidates.map((c) => ({ id: c.id, score: null }));
-
   try {
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-5",
+      max_tokens: 1000,
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const textBlock = response.content.find((b) => b.type === "text");
+    if (!textBlock || textBlock.type !== "text") return candidates.map((c) => ({ id: c.id, score: null }));
+
     const cleaned = textBlock.text.replace(/```json|```/g, "").trim();
     return JSON.parse(cleaned) as { id: string; score: number }[];
-  } catch {
+  } catch (err) {
+    // An invalid model id, a rate limit, a malformed response -- none of
+    // these should 500 the whole search. Fall back to unscored results
+    // (still filtered/returned) rather than losing the feed entirely.
+    console.error("vibe search ranking failed:", err);
     return candidates.map((c) => ({ id: c.id, score: null }));
   }
 }
