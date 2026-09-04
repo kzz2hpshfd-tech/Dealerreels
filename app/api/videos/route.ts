@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Your dealership account was not approved to post reels." }, { status: 403 });
   }
 
-  // A dealership on a 24-hour trial (granted by an admin before they've
+  // A dealership on a one-month trial (granted by an admin before they've
   // bought seats) loses posting access once the trial expires, unless
   // they've since actually subscribed (seatLimit > 0 means real paid
   // seats from checkout -- see app/api/billing/webhook). Dealerships

@@ -192,7 +192,7 @@ export default function AdminDealersPage() {
                           onClick={() => patchDealer(d.id, { verificationStatus: "APPROVED", startTrial: true })}
                           className="flex items-center gap-1 text-[11px] text-blue-300 border border-blue-500/40 rounded-full px-2.5 py-1"
                         >
-                          <Clock size={11} /> Start 24h Trial
+                          <Clock size={11} /> Start 1-Month Trial
                         </button>
                       )}
                       {d.verificationStatus !== "REJECTED" && (
