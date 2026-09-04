@@ -5,12 +5,14 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Bookmark } from "lucide-react";
+import VideoThumb from "@/components/VideoThumb";
 
 type SavedVideo = {
   id: string;
   caption: string;
   model: string;
   videoUrl: string;
+  thumbnailUrl: string | null;
   seller: { id: string; name: string };
   dealership: { id: string; name: string };
 };
@@ -71,7 +73,7 @@ export default function SavedPage() {
         <div className="grid grid-cols-2 gap-0.5 p-0.5">
           {videos.map((v) => (
             <div key={v.id} className="relative aspect-[9/16] bg-neutral-900">
-              <video src={v.videoUrl} muted playsInline preload="metadata" className="absolute inset-0 w-full h-full object-cover" />
+              <VideoThumb videoUrl={v.videoUrl} thumbnailUrl={v.thumbnailUrl} className="absolute inset-0 w-full h-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
               <button
                 onClick={() => unsave(v.id)}
