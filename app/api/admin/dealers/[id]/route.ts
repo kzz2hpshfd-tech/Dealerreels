@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 const ALLOWED_STATUSES = ["PENDING", "APPROVED", "REJECTED"];
-const TRIAL_HOURS = 24;
+const TRIAL_HOURS = 24 * 30;
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
@@ -29,7 +29,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ error: "Shopper accounts aren't verified." }, { status: 400 });
   }
 
-  // A 24-hour trial is an explicit admin override for demo/prospect
+  // A one-month trial is an explicit admin override for demo/prospect
   // accounts -- it skips the seat-limit check entirely (the whole point
   // is letting someone post before they've bought seats) and instead
   // time-boxes access via Dealership.trialEndsAt, enforced at posting
