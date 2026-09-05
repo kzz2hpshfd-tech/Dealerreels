@@ -1,56 +1,72 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { extractR2Key, getPlaybackUrl } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
-// Public -- powers the Discover page. Only dealerships with at least one
-// ready video show up, each with their most recent reel attached so a
-// shopper can preview before tapping through to that dealership's feed.
+// Instagram-Explore-style discovery grid: every ready video across every
+// dealership, lightly ranked toward whatever models/tags this shopper has
+// already liked or saved. Falls back to newest-first when there's no
+// signal yet (a new account, or nobody signed in).
 export async function GET() {
-  const dealerships = await db.dealership.findMany({
-    where: { videos: { some: { status: "READY" } } },
+  const session = await getServerSession(authOptions);
+  const userId = (session?.user as any)?.id as string | undefined;
+
+  const videos = await db.video.findMany({
+    where: { status: "READY" },
+    orderBy: { createdAt: "desc" },
+    take: 60,
     select: {
       id: true,
-      name: true,
-      slug: true,
-      city: true,
-      state: true,
-      videos: {
-        where: { status: "READY" },
-        orderBy: { createdAt: "desc" },
-        take: 1,
-        select: { id: true, caption: true, model: true, thumbnailUrl: true, videoUrl: true },
-      },
-      _count: { select: { videos: { where: { status: "READY" } } } },
+      caption: true,
+      model: true,
+      tags: true,
+      thumbnailUrl: true,
+      videoUrl: true,
+      dealership: { select: { name: true } },
+      _count: { select: { likes: true } },
     },
-    orderBy: { name: "asc" },
   });
 
+  const preferredModels = new Set<string>();
+  const preferredTags = new Set<string>();
+  if (userId) {
+    const signal = await db.video.findMany({
+      where: { OR: [{ likes: { some: { userId } } }, { saves: { some: { userId } } }] },
+      select: { model: true, tags: true },
+      take: 50,
+    });
+    signal.forEach((v) => {
+      preferredModels.add(v.model);
+      v.tags.forEach((t) => preferredTags.add(t));
+    });
+  }
+
+  // Stable sort keeps the createdAt-desc order for anything tied at the
+  // same score, so with no signal at all this is just newest-first.
+  const ranked = videos
+    .map((v) => {
+      let score = 0;
+      if (preferredModels.has(v.model)) score += 2;
+      score += v.tags.filter((t) => preferredTags.has(t)).length;
+      return { ...v, _score: score };
+    })
+    .sort((a, b) => b._score - a._score);
+
   const withPlaybackUrls = await Promise.all(
-    dealerships.map(async (d) => {
-      const preview = d.videos[0];
-      if (!preview) return { ...d, videos: undefined, videoCount: d._count.videos, preview: null };
-      const key = extractR2Key(preview.videoUrl);
-      let videoUrl = preview.videoUrl;
-      if (key) {
-        try {
-          videoUrl = await getPlaybackUrl(key);
-        } catch {
-          // fall through with the stored URL
-        }
+    ranked.map(async (v) => {
+      const { _score, ...rest } = v;
+      const key = extractR2Key(v.videoUrl);
+      if (!key) return rest;
+      try {
+        return { ...rest, videoUrl: await getPlaybackUrl(key) };
+      } catch {
+        return rest;
       }
-      return {
-        id: d.id,
-        name: d.name,
-        slug: d.slug,
-        city: d.city,
-        state: d.state,
-        videoCount: d._count.videos,
-        preview: { ...preview, videoUrl },
-      };
     })
   );
 
-  return NextResponse.json({ dealerships: withPlaybackUrls });
+  return NextResponse.json({ videos: withPlaybackUrls });
 }
