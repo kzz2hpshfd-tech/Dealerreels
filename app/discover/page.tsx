@@ -3,30 +3,30 @@
 import { useEffect, useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
-import { Play, Home, Compass, PlusSquare, Mail, User, MapPin, ShieldCheck } from "lucide-react";
+import { Play, Home, Compass, PlusSquare, Mail, User, Heart, ShieldCheck } from "lucide-react";
 import VideoThumb from "@/components/VideoThumb";
 
-type Dealership = {
+type DiscoverVideo = {
   id: string;
-  name: string;
-  slug: string;
-  city: string;
-  state: string;
-  videoCount: number;
-  preview: { id: string; caption: string; model: string; thumbnailUrl: string | null; videoUrl: string } | null;
+  caption: string;
+  model: string;
+  thumbnailUrl: string | null;
+  videoUrl: string;
+  dealership: { name: string };
+  _count: { likes: number };
 };
 
 export default function DiscoverPage() {
   const { data: session } = useSession();
   const sessionUser = session?.user as any;
-  const [dealerships, setDealerships] = useState<Dealership[]>([]);
+  const [videos, setVideos] = useState<DiscoverVideo[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch("/api/discover")
       .then((r) => r.json())
-      .then((d) => setDealerships(d.dealerships ?? []))
-      .catch(() => setDealerships([]))
+      .then((d) => setVideos(d.videos ?? []))
+      .catch(() => setVideos([]))
       .finally(() => setLoading(false));
   }, []);
 
@@ -55,49 +55,22 @@ export default function DiscoverPage() {
           </div>
         </div>
 
-        {/* Dealership list */}
-        <div className="flex-1 overflow-y-auto px-3 py-3">
-          <h1 className="text-white font-display text-lg px-1 mb-3">Discover dealerships</h1>
-
+        {/* Discovery grid -- Explore-style, three columns of portrait tiles */}
+        <div className="flex-1 overflow-y-auto">
           {loading && <p className="text-white/40 text-xs text-center py-10">Loading…</p>}
 
-          {!loading && dealerships.length === 0 && (
-            <p className="text-white/40 text-xs text-center py-10 px-6">
-              No dealerships have posted reels yet.
-            </p>
+          {!loading && videos.length === 0 && (
+            <p className="text-white/40 text-xs text-center py-10 px-6">No reels to discover yet.</p>
           )}
 
-          <div className="space-y-2">
-            {dealerships.map((d) => (
-              <Link
-                key={d.id}
-                href={`/feed?dealership=${d.slug}`}
-                className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl p-2.5 hover:bg-white/10 transition-colors"
-              >
-                <div className="relative w-14 h-14 shrink-0 rounded-lg overflow-hidden bg-neutral-800">
-                  {d.preview ? (
-                    <VideoThumb
-                      videoUrl={d.preview.videoUrl}
-                      thumbnailUrl={d.preview.thumbnailUrl}
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Play size={16} className="text-white/30 fill-white/30" strokeWidth={0} />
-                    </div>
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-white text-sm font-semibold truncate">{d.name}</p>
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <MapPin size={10} className="text-white/40 shrink-0" />
-                    <span className="text-white/50 text-[11px] truncate">
-                      {d.city}, {d.state}
-                    </span>
-                  </div>
-                  <p className="text-red-400 text-[11px] mt-0.5">
-                    {d.videoCount} reel{d.videoCount === 1 ? "" : "s"}
-                  </p>
+          <div className="grid grid-cols-3 gap-0.5 p-0.5">
+            {videos.map((v) => (
+              <Link key={v.id} href={`/feed?v=${v.id}`} className="relative aspect-[3/4] bg-neutral-900 block">
+                <VideoThumb videoUrl={v.videoUrl} thumbnailUrl={v.thumbnailUrl} className="absolute inset-0 w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                <div className="absolute bottom-1 left-1 right-1 flex items-center gap-1">
+                  <Heart size={10} className="text-white fill-white shrink-0" />
+                  <span className="text-white text-[10px] font-semibold">{v._count.likes}</span>
                 </div>
               </Link>
             ))}
